@@ -1,21 +1,25 @@
 #pragma once
 
+#include "Matrix.hpp"
+
 #include <type_traits>
 #include <charconv>
 #include <string>
 #include <stdexcept>
 #include <vector>
 
-
 // ============== Types ============== 
 
 typedef float Float;
 typedef int Int;
 
+typedef Matrix<Float> Mat;
+typedef std::vector<Float> Vec;
+
 
 // ============== Consts ============== 
 
-constexpr Int BIN_SIZE = 200;
+constexpr Int BIN_SIZE = 10;
 
 
 // ============== Strings ============== 

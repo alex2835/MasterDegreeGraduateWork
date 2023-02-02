@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2022 Martin Helmut Fieber <info@martin-fieber.se>
- */
-
 #include "Application.hpp"
 
 #include <backends/imgui_impl_sdl.h>
