@@ -2,9 +2,7 @@ set(NAME "App")
 
 include(${PROJECT_SOURCE_DIR}/cmake/StaticAnalyzers.cmake)
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/App/fonts DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-
-add_executable(${NAME} App/Main.cpp)
+add_executable(${NAME} src/main.cpp)
 
 if (WIN32)
   # Copy DLL files on Windows to the target App build folder.

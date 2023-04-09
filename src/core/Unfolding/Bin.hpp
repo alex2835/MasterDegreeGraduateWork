@@ -1,14 +1,27 @@
 #pragma once
 
-#include "LoadData.hpp"
-#include "Utils.hpp"
+#include "load_data.hpp"
+#include "utils.hpp"
+
+
+enum class BinningType
+{
+	FixedSize
+};
+
+struct Bin
+{
+	size_t mBegin;
+	size_t mEnd;
+};
 
 struct Bins
 {
-	const Row& mRowRef;
-	Float mBinStep;
-	std::vector<Int> mBins;
-	std::vector<Float> mPropobilities;
+	const Rows& mSimRows;
+	const Rows& mExpCols;
+	size_t mDecompDim;
+	std::vector<std::pair<Vec, Vec>> mData;
+	std::vector<Bin> mBins;
 };
 
-std::vector<Bins> SplitRowsIntoBins( const InputData& data, Int bin_size );
+std::vector<Bins> SplitRowsIntoBins( const InputData& data, BinningType type, Int bins_count );

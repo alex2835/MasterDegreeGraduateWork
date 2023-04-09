@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Matrix.hpp"
+#include "matrix.hpp"
 
 #include <type_traits>
 #include <charconv>

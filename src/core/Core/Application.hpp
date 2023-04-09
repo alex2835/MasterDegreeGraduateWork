@@ -8,8 +8,8 @@
 #include <string>
 #include <vector>
 
-#include "Core/Window.hpp"
-#include "Unfolding/UnfoldingApp.hpp"
+#include "core/Window.hpp"
+#include "unfolding/unfolding_app.hpp"
 #include "SDL.h"
 
 namespace App {

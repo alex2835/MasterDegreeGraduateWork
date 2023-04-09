@@ -1,24 +1,11 @@
 set(NAME "Core")
 
-#include(${PROJECT_SOURCE_DIR}/cmake/StaticAnalyzers.cmake)
+file(GLOB_RECURSE SRCS
+     "*.hpp"
+     "*.cpp"
+)
 
-add_library(${NAME} STATIC
-  "Core/Log.cpp"
-  "Core/Log.hpp"
-  "Core/Debug/Instrumentor.hpp"
-  "Core/Application.cpp"
-  "Core/Application.hpp"
-  "Core/Window.cpp"
-  "Core/Window.hpp"
-  
-  "Unfolding/UnfoldingApp.hpp"
-  "Unfolding/UnfoldingApp.cpp"
-  "Unfolding/Utils.hpp"
-  "Unfolding/LoadData.cpp"
-  "Unfolding/Bin.hpp"
-  "Unfolding/Bin.cpp"
-  "Unfolding/Matrix.hpp"
- )
+add_library(${NAME} STATIC ${SRCS})
 
 target_include_directories(${NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_features(${NAME} PRIVATE cxx_std_20)
