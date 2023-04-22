@@ -13,15 +13,15 @@ using namespace std::literals;
 struct Column
 {
 	std::string mName;
-	Vec mData;
+	std::vector<Float> mData;
 };
 
 struct Rows
 {
 	std::vector<std::string> mNames;
-	std::vector<Vec> mData;
+	std::vector<sfVec> mData;
 
-	const Vec& operator[]( size_t idx ) const
+	const sfVec& operator[]( size_t idx ) const
 	{
 		return mData[idx];
 	}
@@ -47,6 +47,7 @@ struct Rows
 
 struct InputData
 {
+	std::vector<Column> mCols;
 	Rows mExp;
 	Rows mSim;
 };

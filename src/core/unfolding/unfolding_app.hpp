@@ -9,7 +9,7 @@
 class UnfoldingApp
 {
 	InputData mInputData;
-	std::vector<Bins> mSpitedRows;
+	Bins mBins;
 	Mat mMigrationMat;
 public:
 	void Init();

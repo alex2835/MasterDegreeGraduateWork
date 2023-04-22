@@ -1,34 +1,42 @@
 
 #include "unfolding_app.hpp"
 #include "utils.hpp"
+#include "matrix.hpp"
+#include "migration_mat.hpp"
+#include "svd.hpp"
 
-
-Mat CalculateMigrationMat( const std::vector<Bins>& splited_rows )
+std::vector<Float> GetMatData( const Mat& m )
 {
-	auto mat_size = splited_rows.front().mBins.size();
-	Mat mat( mat_size, mat_size );
+	std::vector<Float> raw( m.rows() * m.cols() );
+	for( int i = 0; i < m.rows(); i++ )
+		for( int j = 0; j < m.cols(); j++ )
+			raw[i * m.rows() + j] = m[i][j];
+	return raw;
+}
 
-	//for( size_t i = 0; i < mat_size; i++ )
-	//{
-	//	for( size_t j = 0; j < mat_size; j++ )
-	//	{
-	//		auto x = splited_rows[0].mBins[i];
-	//		auto y = splited_rows[1].mBins[j];
-	//		auto x_size = splited_rows[0].mSimRef.mData.size();
-	//		auto y_size = splited_rows[1].mSimRef.mData.size();
-	//		auto value = ( Float( x + y ) / ( x_size + y_size ) );// / splited_rows[1].mPropobilities[j];
-	//		mat[i][j] = value;
-	//	}
-	//}
-	return mat;
+// S U V
+std::tuple<Mat, dfVec, Mat> SVD( const Mat& A )
+{
+	Mat U;
+	dfVec S;
+	Mat Vt;
+	alglib::rmatrixsvd( A, A.rows(), A.cols(), 2, 2, 2, S, U, Vt);
+
+	std::cout << "u\n" << U.tostring(2) << std::endl;
+	std::cout << "s\n" << S.tostring(2) << std::endl;
+	std::cout << "Vt\n" << Vt.tostring(2) << std::endl;
+
+	return { U, S, Vt };
 }
 
 
 void UnfoldingApp::Init()
 {
 	mInputData = LoadData( { "res/sim_p_2.txt" } );
-	mSpitedRows = SplitRowsIntoBins( mInputData, BinningType::FixedSize, BIN_SIZE );
-	//mMigrationMat = CalculateMigrationMat( mSpitedRows );
+	mBins = SplitRowsIntoBins( mInputData, BinningType::FixedSize, BIN_SIZE );
+	mMigrationMat = CalculateMigrationMat( mBins );
+
+	auto[ s, u, v ] = SVD( mMigrationMat );
 }
 
 void UnfoldingApp::Update()
@@ -110,27 +118,25 @@ void UnfoldingApp::Draw()
 	//	ImPlot::EndPlot();
 	//}
 	//ImGui::End();
+		
 
+	ImGui::Begin( "Migration" );
+	static ImPlotColormap map = ImPlotColormap_Viridis;
+	ImGui::SameLine();
+	ImGui::LabelText( "##Colormap Index", "%s", "Change Colormap" );
+	ImGui::SetNextItemWidth( 300 );
+	ImPlot::PushColormap( map );
 
-	//ImGui::Begin( "Migration" );
-	//static ImPlotColormap map = ImPlotColormap_Viridis;
-	//ImGui::SameLine();
-	//ImGui::LabelText( "##Colormap Index", "%s", "Change Colormap" );
-	//ImGui::SetNextItemWidth( 300 );
-	//ImPlot::PushColormap( map );
+	if( ImPlot::BeginPlot( "##Heatmap1", ImVec2( -1, -1 ), ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText ) )
+	{
+		//ImPlot::SetupAxes( NULL, NULL, axes_flags, axes_flags );
+		//ImPlot::SetupAxisTicks( ImAxis_X1, 0 + 1.0 / 14.0, 1 - 1.0 / 14.0 );
+		//ImPlot::SetupAxisTicks( ImAxis_Y1, 1 - 1.0 / 14.0, 0 + 1.0 / 14.0 );
+		ImPlot::PlotHeatmap( "heat", GetMatData(mMigrationMat).data(), (int)mMigrationMat.rows(), (int)mMigrationMat.cols(), 0.0, 0.5, "%g", ImPlotPoint(0, 0), ImPlotPoint(1, 1));
+		ImPlot::EndPlot();
+	}
+	ImGui::End();
 
-	//if( ImPlot::BeginPlot( "##Heatmap1", ImVec2( -1, -1 ), ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText ) )
-	//{
-	//	//ImPlot::SetupAxes( NULL, NULL, axes_flags, axes_flags );
-	//	//ImPlot::SetupAxisTicks( ImAxis_X1, 0 + 1.0 / 14.0, 1 - 1.0 / 14.0 );
-	//	//ImPlot::SetupAxisTicks( ImAxis_Y1, 1 - 1.0 / 14.0, 0 + 1.0 / 14.0 );
-	//	ImPlot::PlotHeatmap( "heat", mMigrationMat.GetData().data(), (int)mMigrationMat.Rows(), (int)mMigrationMat.Cols(), 0.0, 1.0, "%g", ImPlotPoint( 0, 0 ), ImPlotPoint( 1, 1 ) );
-	//	ImPlot::EndPlot();
-	//}
-	//ImGui::End();
-
-
-
-	//ImPlot::ShowDemoWindow();
+	ImPlot::ShowDemoWindow();
 }
 

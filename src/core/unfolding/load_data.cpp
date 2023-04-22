@@ -1,6 +1,8 @@
 
 #include "load_data.hpp"
 #include <format>
+#include <ranges>
+#include <algorithm>
 
 InputData LoadData( std::vector<std::string> files )
 {
@@ -29,14 +31,14 @@ InputData LoadData( std::vector<std::string> files )
 	}
 
 	// Convert into rows
-	std::vector<Column*> sim_cols;
 	std::vector<Column*> exp_cols;
+	std::vector<Column*> sim_cols;
 	for( auto& col : colums )
 	{
-		if( col.mName.ends_with( "sim" ) )
-			sim_cols.push_back( &col );
-		else
+		if( col.mName.ends_with( "exp" ) )
 			exp_cols.push_back( &col );
+		else
+			sim_cols.push_back( &col );
 	}
 	if( sim_cols.size() != exp_cols.size() )
 		throw std::runtime_error( std::format( "Invalid columns amount sim: {} != exp: {}",
@@ -46,8 +48,8 @@ InputData LoadData( std::vector<std::string> files )
 	{
 		return col1->mName < col2->mName;
 	};
-	std::ranges::sort( sim_cols, sort_func );
 	std::ranges::sort( exp_cols, sort_func );
+	std::ranges::sort( sim_cols, sort_func );
 
 	auto fill_rows = []( std::vector<Column*> cols ) -> Rows
 	{
@@ -56,14 +58,14 @@ InputData LoadData( std::vector<std::string> files )
 			rows.mNames.push_back( col->mName );
 		for( size_t i = 0; i < cols.front()->mData.size(); i++ )
 		{
-			std::vector<Float> row;
+			sfVec row;
 			for( const auto* col : cols )
 				row.push_back( col->mData[i] );
 			rows.mData.push_back( std::move( row ) );
 		}
 		return rows;
 	};
-	data.mSim = fill_rows( sim_cols );
 	data.mExp = fill_rows( exp_cols );
+	data.mSim = fill_rows( sim_cols );
 	return data;
 }

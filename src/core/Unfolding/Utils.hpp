@@ -1,26 +1,39 @@
 #pragma once
 
-#include "matrix.hpp"
+#include "linalg.h"
+#include "static_vector.hpp"
 
 #include <type_traits>
 #include <charconv>
 #include <string>
 #include <stdexcept>
 #include <vector>
-
-// ============== Types ============== 
-
-typedef float Float;
-typedef int Int;
-
-typedef Matrix<Float> Mat;
-typedef std::vector<Float> Vec;
-
+#include <array>
+#include <stdexcept>
+#include <format>
 
 // ============== Consts ============== 
 
-constexpr Int BIN_SIZE = 10;
+constexpr size_t BIN_SIZE = 10;
+constexpr size_t MAX_VEC_SIZE = 3;
 
+// ============== Types ============== 
+
+using Mat = alglib::real_2d_array;
+using dfVec = alglib::real_1d_array;
+using sfVec = Vector<Float, MAX_VEC_SIZE>;
+using siVec = Vector<int64_t, MAX_VEC_SIZE>;
+
+
+inline Mat CreateSqrMat( size_t size )
+{
+	Mat mat;
+	mat.setlength( size, size );
+	for( size_t i = 0; i < size; i++ )
+		for( size_t j = 0; j < size; j++ )
+			mat[i][j] = 0;
+	return mat;
+}
 
 // ============== Strings ============== 
 
