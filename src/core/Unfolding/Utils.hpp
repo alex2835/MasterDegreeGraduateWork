@@ -19,20 +19,48 @@ constexpr size_t MAX_VEC_SIZE = 3;
 
 // ============== Types ============== 
 
-using Mat = alglib::real_2d_array;
+using dfMat = alglib::real_2d_array;
 using dfVec = alglib::real_1d_array;
 using sfVec = Vector<Float, MAX_VEC_SIZE>;
 using siVec = Vector<int64_t, MAX_VEC_SIZE>;
 
 
-inline Mat CreateSqrMat( size_t size )
+inline dfMat CreateSqrMat( size_t size )
 {
-	Mat mat;
+	dfMat mat;
 	mat.setlength( size, size );
 	for( size_t i = 0; i < size; i++ )
 		for( size_t j = 0; j < size; j++ )
 			mat[i][j] = 0;
 	return mat;
+}
+
+inline dfVec MatVecMul( const dfMat& mat, const dfVec& vec )
+{
+	dfVec res;
+	res.setlength( mat.rows() );
+	alglib::rmatrixmv( mat.rows(), mat.cols(), mat, 0, 0, 0, vec, 0, res, 0 );
+	return res;
+}
+
+inline dfMat MatMul( const dfMat& mat1, const dfMat& mat2 )
+{
+	if( mat1.rows() != mat2.cols() )
+		throw std::runtime_error( std::format( "MatMul: Invalid mat sizes: mat1: {} {}, mat2: {} {}",
+								  mat1.rows(), mat1.cols(), mat2.rows(), mat2.cols() ) );
+
+	dfMat res;
+	res.setlength( mat1.rows(), mat2.cols() );
+	alglib::rmatrixgemm( mat1.rows(), mat2.cols(), mat1.cols(), 0, mat1, 0, 0, 0, mat2, 0, 0, 0, 0, res, 0, 0 );
+	return res;
+}
+
+inline dfMat MatTranpose( const dfMat& mat )
+{
+	dfMat res;
+	res.setlength( mat.cols(), mat.rows() );
+	alglib::rmatrixtranspose( mat.rows(), mat.cols(), mat, 0, 0, res, 0, 0 );
+	return res;
 }
 
 // ============== Strings ============== 

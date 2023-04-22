@@ -4,7 +4,7 @@
 #include "load_data.hpp"
 #include <format>
 
-inline Mat CalculateMigrationMat( Bins& bins )
+inline dfMat CalculateMigrationMat( Bins& bins )
 {
 	size_t mat_size = (size_t)std::pow( bins.mBins.size(), bins.mSize.size() );
 	auto mat = CreateSqrMat( mat_size );

@@ -5,7 +5,7 @@
 #include "migration_mat.hpp"
 #include "svd.hpp"
 
-std::vector<Float> GetMatData( const Mat& m )
+std::vector<Float> GetMatData( const dfMat& m )
 {
 	std::vector<Float> raw( m.rows() * m.cols() );
 	for( int i = 0; i < m.rows(); i++ )
@@ -14,19 +14,29 @@ std::vector<Float> GetMatData( const Mat& m )
 	return raw;
 }
 
-// S U V
-std::tuple<Mat, dfVec, Mat> SVD( const Mat& A )
+// U S Vt
+std::tuple<dfMat, dfVec, dfMat> SVD( const dfMat A )
 {
-	Mat U;
+	dfMat U;
 	dfVec S;
-	Mat Vt;
-	alglib::rmatrixsvd( A, A.rows(), A.cols(), 2, 2, 2, S, U, Vt);
-
-	std::cout << "u\n" << U.tostring(2) << std::endl;
-	std::cout << "s\n" << S.tostring(2) << std::endl;
-	std::cout << "Vt\n" << Vt.tostring(2) << std::endl;
-
+	dfMat Vt;
+	alglib::rmatrixsvd( A, A.rows(), A.cols(), 2, 2, 2, S, U, Vt );
 	return { U, S, Vt };
+}
+
+dfVec CalculateProbabilities( Bins& bins )
+{
+	dfVec probabilities;
+	probabilities.setlength( bins.mBins.size() );
+
+	size_t size = 0;
+	for( auto& bin : bins.mBins )
+		size += bin.Size();
+
+	size_t i = 0;
+	for( auto& bin : bins.mBins )
+		probabilities[i++] = (Float)bin.Size() / size;
+	return probabilities;
 }
 
 
@@ -34,9 +44,17 @@ void UnfoldingApp::Init()
 {
 	mInputData = LoadData( { "res/sim_p_2.txt" } );
 	mBins = SplitRowsIntoBins( mInputData, BinningType::FixedSize, BIN_SIZE );
+	mProbabilities = CalculateProbabilities( mBins );
 	mMigrationMat = CalculateMigrationMat( mBins );
+	auto[ u,s,vt ] = SVD( mMigrationMat );
 
-	auto[ s, u, v ] = SVD( mMigrationMat );
+	std::cout << "probabilities: ";
+	for( int i = 0; i < mProbabilities.length(); i++ )
+		std::cout << mProbabilities[i] << " ";
+
+	std::cout << "\nu\n" << u.tostring( 3 ) << std::endl;
+	std::cout << "s\n" << s.tostring( 3 ) << std::endl;
+	std::cout << "Vt\n" << vt.tostring( 3 ) << std::endl;
 }
 
 void UnfoldingApp::Update()

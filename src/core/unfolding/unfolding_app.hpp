@@ -10,7 +10,8 @@ class UnfoldingApp
 {
 	InputData mInputData;
 	Bins mBins;
-	Mat mMigrationMat;
+	dfVec mProbabilities;
+	dfMat mMigrationMat;
 public:
 	void Init();
 	void Update();
