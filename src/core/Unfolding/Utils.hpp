@@ -11,10 +11,13 @@
 #include <array>
 #include <stdexcept>
 #include <format>
+#include <span>
+#include <cstdlib>
 
 // ============== Consts ============== 
 
 constexpr size_t BIN_SIZE = 10;
+constexpr size_t MAX_BIN_SIZE = 100;
 constexpr size_t MAX_VEC_SIZE = 3;
 
 // ============== Types ============== 
@@ -24,6 +27,26 @@ using dfVec = alglib::real_1d_array;
 using sfVec = Vector<Float, MAX_VEC_SIZE>;
 using siVec = Vector<int64_t, MAX_VEC_SIZE>;
 
+
+// ============== Data ============== 
+
+template <typename Vec>
+auto ToSpan( Vec& vec )
+{
+	return std::span( vec.begin(), vec.end() );
+}
+
+template <typename T>
+std::vector<std::span<T>> SplitData( const std::span<T> vec, size_t parts )
+{
+	std::vector<std::span<T>> res;
+	auto part_size = size_t( std::ceil( (Float)vec.size() / parts ) );
+	for( size_t i = 0; i < parts; i++ )
+		res.push_back( vec.subspan( i * part_size, part_size ) );
+	return res;
+}
+
+// ============== Mat/Vec ============== 
 
 inline dfMat CreateSqrMat( size_t size )
 {

@@ -25,13 +25,13 @@ struct Rows
 	{
 		return mData[idx];
 	}
-	auto begin() const
+	auto begin()
 	{
-		return mData.cbegin();
+		return mData.begin();
 	}
-	auto end() const
+	auto end()
 	{
-		return mData.cend();
+		return mData.end();
 	}
 	size_t Dim() const
 	{

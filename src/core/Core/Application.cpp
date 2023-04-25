@@ -63,7 +63,7 @@ ExitStatus App::Application::run() {
 
       ImGui_ImplSDL2_ProcessEvent(&event);
 
-      if (event.type == SDL_QUIT) {
+      if (event.type == SDL_QUIT || mUnfoldingApp.Stop() ) {
         stop();
       }
 
@@ -73,26 +73,14 @@ ExitStatus App::Application::run() {
       }
     }
 
+    mUnfoldingApp.Update();
+
     // Start the Dear ImGui frame
     ImGui_ImplSDLRenderer_NewFrame();
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
     ImGui::DockSpaceOverViewport();
-
-    if (ImGui::BeginMainMenuBar()) {
-      if (ImGui::BeginMenu("File")) {
-        if (ImGui::MenuItem("Exit", "Cmd+Q")) {
-          stop();
-        }
-        ImGui::EndMenu();
-      }
-      if (ImGui::BeginMenu("View")) {
-        ImGui::MenuItem("Some Panel", nullptr);
-        ImGui::EndMenu();
-      }
-      ImGui::EndMainMenuBar();
-    }
 
     mUnfoldingApp.Draw();
 

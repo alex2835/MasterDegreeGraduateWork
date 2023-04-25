@@ -7,7 +7,6 @@
 InputData LoadData( std::vector<std::string> files )
 {
 	InputData data;
-	std::vector<Column> colums;
 
 	// Get cols
 	for( const auto& path : files )
@@ -26,14 +25,14 @@ InputData LoadData( std::vector<std::string> files )
 			for( auto value : Split( line, ","sv ) )
 				file_columns[i++].mData.push_back( ParseFloat( std::string( Trim( value ) ) ) );
 		}
-		colums.insert( colums.end(), std::move_iterator( file_columns.begin() ),
-								     std::move_iterator( file_columns.end() ) );
+		data.mCols.insert( data.mCols.end(), std::move_iterator( file_columns.begin() ),
+						   std::move_iterator( file_columns.end() ) );
 	}
 
 	// Convert into rows
 	std::vector<Column*> exp_cols;
 	std::vector<Column*> sim_cols;
-	for( auto& col : colums )
+	for( auto& col : data.mCols )
 	{
 		if( col.mName.ends_with( "exp" ) )
 			exp_cols.push_back( &col );

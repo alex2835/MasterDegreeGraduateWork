@@ -64,6 +64,26 @@ public:
 		return *this;
 	}
 
+	bool AllEqualOrGreater( const Vector<T, MaxSize>& other ) const
+	{
+		if( mSize != other.mSize )
+			return false;
+		for( size_t i = 0; i < mSize; i++ )
+			if( mData[i] < other.mData[i] )
+				return false;
+		return true;
+	}
+
+	bool AllEqualOrLess( const Vector<T, MaxSize>& other ) const
+	{
+		if( mSize != other.mSize )
+			return false;
+		for( size_t i = 0; i < mSize; i++ )
+			if( mData[i] > other.mData[i] )
+				return false;
+		return true;
+	}
+
 	bool operator== ( const Vector<T, MaxSize>& other ) const noexcept
 	{
 		return mSize == other.mSize &&
@@ -73,7 +93,7 @@ public:
 	bool operator< ( const Vector<T, MaxSize>& other ) const noexcept
 	{
 		return mSize <= other.mSize &&
-			mData < other.mData;
+			   mData < other.mData;
 	}
 	bool operator<= ( const Vector<T, MaxSize>& other ) const noexcept
 	{

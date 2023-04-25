@@ -7,4 +7,4 @@ file(GLOB SRCS
 
 add_library(alglib STATIC ${SRCS})
 
-target_include_directories( alglib PUBLIC ${SRCS} )
+target_include_directories( alglib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)

@@ -4,69 +4,85 @@
 #include <algorithm>
 #include <stdexcept>
 
-std::pair<sfVec, sfVec> GetMinMax( const Rows& exp, const Rows& sim )
+std::pair<sfVec, sfVec> GetMinMax( const std::span<sfVec> exp,
+								   const std::span<sfVec> sim,
+								   size_t dims )
 {
-	sfVec min( exp[0].size() );
-	sfVec max( exp[0].size() );
-	for( size_t i = 0; i < sim.Size(); i++ )
+	sfVec min( dims, std::numeric_limits<Float>::max() );
+	sfVec max( dims, -std::numeric_limits<Float>::max() );
+	for( size_t i = 0; i < exp.size(); i++ )
 	{
 		auto s = sim[i];
 		auto e = exp[i];
-		for( size_t j = 0; j < s.size(); j++ )
+		for( size_t j = 0; j < dims; j++ )
 		{
-			min[j] = std::min( std::min( min[j], s[j] ), e[j] );
-			max[j] = std::max( std::max( max[j], s[j] ), e[j] );
+			min[j] = std::min( std::min( e[j], s[j] ), min[j] );
+			max[j] = std::max( std::max( e[j], s[j] ), max[j] );
 		}
 	}
 	return { min, max };
 }
 
-Bins FixedSizeBinning( const Rows& exp, const Rows& sim, size_t bins_count )
+Bins FixedSizeBinning( const std::span<sfVec> exp,
+					   const std::span<sfVec> sim,
+					   size_t dims,
+					   size_t bins_count )
 {
 	if( bins_count < 1 )
 		std::runtime_error( "Invalid binning size" );
 
-	auto [min, max] = GetMinMax( exp, sim );
+	auto [min, max] = GetMinMax( exp, sim, dims );
 	sfVec step = ( max - min ) / (Float)bins_count;
-	size_t dims = max.size();
-	
+
+	//std::cout << "min" << std::format("{}", min) << std::endl;
+	//std::cout << "max" << std::format("{}", max) << std::endl;
+
 	Bins bins;
-	bins.mSize = siVec( dims, bins_count );
+	bins.mSize = siVec( dims, bins_count );				
 
-	for( size_t i = 0; i <= std::pow( bins_count, dims ) - dims; i++ )
+	for( size_t i = 0; i < std::pow( bins_count, dims ); i++ )
 	{
-		if( i > 0 && i % bins_count == 0 )
-			continue;
-
 		siVec multi_dim_idx = ToMultidimentionalIdx( i, dims, bins_count );
 		siVec next = multi_dim_idx + 1;
 
+		//std::cout << std::format( "{}", multi_dim_idx ) << std::endl;
+		//std::cout << std::format( "{}", next ) << std::endl;
+
 		bins.PutBin( Bin{ multi_dim_idx,
-						  step * multi_dim_idx.cast<Float>(),
-						  step * next.cast<Float>() } );
+						  min + step * multi_dim_idx.cast<Float>(),
+						  min + step * next.cast<Float>() } );
 	}
-	
-	for( size_t i = 0; i < exp.Size(); i++ )
+	bins.mBins.front().mBegin = min;
+	bins.mBins.back().mEnd = max;
+
+	for( size_t i = 0; i < exp.size(); i++ )
 		bins.PutInBin( std::make_pair( exp[i], sim[i] ) );
 	
 	return  bins;
 }
 
-Bins SplitRowsIntoBins( const InputData& data, BinningType type, Int bins_count )
+Bins CalculateBins( const std::span<sfVec> exp, 
+					const std::span<sfVec> sim,
+					size_t dims,
+					BinningType type,
+					Int bins_count )
 {
-	if( data.mExp.Size() == 0 || data.mSim.Size() == 0 )
+	if( exp.size() == 0 || sim.size() == 0 )
 		throw std::runtime_error( "Input data are empty" );
 
 	// Split into bins
 	switch( type )
 	{
-	case BinningType::FixedSize:
-		return FixedSizeBinning( data.mExp, data.mSim, bins_count );
+	case BinningType::Static:
+		return FixedSizeBinning( exp, sim, dims, bins_count );
+		break;
+	case BinningType::Dynamic:
+		std::cout << "Dynamic binning not implemented yet" << std::endl;
+		return FixedSizeBinning( exp, sim, dims, bins_count );
 		break;
 	}
 	throw std::runtime_error( "Invalid binning type" );
 }
-
 
 
 //std::pair<sfVec, sfVec> ShiftDimTransform( const std::pair<sfVec, sfVec>& pair,

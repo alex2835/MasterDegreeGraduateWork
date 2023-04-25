@@ -5,12 +5,15 @@
 
 #include <set>
 #include <algorithm>
+#include <iostream>
+#include <format>
 
+size_t FromMultidimentionalIdx( siVec idx, siVec md_size );
 
 enum class BinningType
 {
-	FixedSize,
-	Exponential
+	Static,
+	Dynamic
 };
 
 struct Bin
@@ -46,7 +49,26 @@ struct Bin
 struct Bins
 {
 	std::vector<Bin> mBins;
+	std::vector<std::vector<std::pair<Float, Float>>> mCache;
 	siVec mSize;
+
+	auto begin()
+	{
+		return mBins.begin();
+	}
+
+	auto end()
+	{
+		return mBins.end();
+	}
+
+	size_t OneDimSize()
+	{
+		size_t res = 1;
+		for( auto dim_size : mSize )
+			res *= dim_size;
+		return res;
+	}
 
 	void PutBin( Bin&& bin )
 	{
@@ -55,7 +77,10 @@ struct Bins
 
 	void PutInBin( std::pair<sfVec, sfVec> exp_sim )
 	{
-		GetBinByValue( exp_sim.first ).mData.emplace( exp_sim );
+		auto& bin = GetBinByValue( exp_sim.first );
+		bin.mData.emplace( exp_sim );
+		
+		//std::cout << std::format( "bins:{} {}  value: {}\n", bin.mBegin, bin.mEnd, exp_sim.first );
 	}
 
 	Bin& operator[]( size_t idx )
@@ -67,27 +92,82 @@ struct Bins
 
 	Bin& GetBinByValue( sfVec value )
 	{
-		Bin bin;
-		bin.mEnd = value;
+		//// Linear
+		//siVec lin_id;
+		//size_t flat_lin_id = 0;
+		//for( auto& bin : mBins )
+		//{
+		//	//std::cout << std::format( "bins:{} {}  value: {} {}\n", bin.mBegin, bin.mEnd, value, 
+		//	//						  bin.mBegin.AllEqualOrLess( value ) && bin.mEnd.AllEqualOrGreater( value ) );
 
-		auto ptr = std::lower_bound( mBins.begin(), mBins.end(), bin,
-		[]( const Bin& bin, const Bin& value )
+		//	if( bin.mBegin.AllEqualOrLess( value ) &&
+		//		bin.mEnd.AllEqualOrGreater( value ) )  
+		//	{
+		//		//return bin;
+		//		lin_id = bin.mIdx;
+		//		break;
+		//	}
+		//	flat_lin_id++;
+		//}
+		////throw std::runtime_error( std::format( "GetBinByvalue: Out of bins bound {}", value ) );
+
+
+		// Binary
+		if( mCache.empty() )
+			CalculateCache();
+
+		siVec idx;
+		for( size_t dim = 0; dim < mSize.size(); dim++ )
 		{
-			return value.mEnd >= bin.mEnd;
-		} );
-		if( ptr == mBins.end() )
-		{
-			if( value <= mBins.back().mEnd )
-				return mBins.back();
-			throw std::runtime_error( std::format( "GetBinByvalue: Out of bins bound {}", value ) );
+			auto ptr = std::ranges::lower_bound( mCache[dim], std::pair( value[dim], value[dim] ),
+				[]( std::pair<Float, Float> bin,
+					std::pair<Float, Float> value )
+			{
+				return bin.first <= value.first;
+			} );
+
+			if( ptr == mCache[dim].end() )
+			{
+				auto last_id = mCache[dim].size() - 1;
+				if( value[dim] <= mCache[dim][last_id].second )
+					idx.push_back( last_id );
+				else
+					throw std::runtime_error( std::format( "GetBinByvalue: Out of bins bound {}", value ) );
+			}
+			else
+			{
+				auto dist = std::distance( mCache[dim].begin(), ptr ) - 1;
+				idx.push_back( std::max( (int)dist, 0 ) );
+			}
 		}
-		auto idx = std::distance( mBins.begin(), ptr );
-		return mBins[idx];
+		return mBins[FromMultidimentionalIdx( idx, mSize )];
+	}
+
+private:
+	void CalculateCache()
+	{
+		for( size_t dim = 0; dim < mSize.size(); dim++ )
+			mCache.push_back( std::vector<std::pair<Float,Float>>( mSize[dim] ) );
+		for( auto& bin : mBins )
+			for( size_t dim = 0; dim < mSize.size(); dim++ )
+				mCache[dim][bin.mIdx[dim]] = { bin.mBegin[dim] , bin.mEnd[dim] };
 	}
 
 };
 
-Bins SplitRowsIntoBins( const InputData& data, BinningType type, Int bins_count );
+Bins CalculateBins( std::span<sfVec> exp,
+					std::span<sfVec> sim,
+					size_t dims,
+					BinningType type,
+					Int bins_count );
+
+inline size_t MultiDimPow( siVec md_size, size_t dim )
+{
+	size_t res = 1;
+	for( size_t i = 0; i < dim; i++ )
+		res *= md_size[i];
+	return res;
+}
 
 inline siVec ToMultidimentionalIdx( size_t flat_idx,
 									size_t dims,
@@ -103,20 +183,44 @@ inline siVec ToMultidimentionalIdx( size_t flat_idx,
 	return res;
 }
 
-inline size_t MultiDimPow( siVec md_size, size_t dim )
-{
-	size_t res = 1;
-	for( size_t i = 0; i < dim; i++ )
-		res *= md_size[i];
-	return res;
-}
-
 inline size_t FromMultidimentionalIdx( siVec idx, siVec md_size )
 {
 	size_t res = 0;
 	for( size_t i = 0; i < idx.size(); i++ )
-		res += idx[i] + ( i != 0 ? 
-						  MultiDimPow( md_size, i ) :
-						  0 );
+		res += idx[i] * MultiDimPow( md_size, i );
 	return res;
+}
+
+
+struct BinningProjections
+{
+	std::vector<std::vector<Float>> exp_xs;
+	std::vector<std::vector<Float>> exp_ys;
+	//std::vector<std::vector<Float>> sim_xs;
+	//std::vector<std::vector<Float>> sim_ys;
+};
+
+inline BinningProjections CaclucateBinningProjections( Bins& bins, size_t dims )
+{
+	BinningProjections projections;
+	for( size_t dim = 0; dim < dims; dim++ )
+	{
+		projections.exp_xs.push_back( std::vector<Float>( bins.mSize[dim] ) );
+		projections.exp_ys.push_back( std::vector<Float>( bins.mSize[dim] ) );
+		//projections.sim_xs.push_back( std::vector<Float>( bins.mSize[dim] ) );
+		//projections.sim_ys.push_back( std::vector<Float>( bins.mSize[dim] ) );
+	}
+	for( auto& bin : bins )
+	{
+		for( size_t dim = 0; dim < dims; dim++ )
+		{
+			projections.exp_xs[dim][bin.mIdx[dim]] = ( bin.mEnd[dim] + bin.mBegin[dim] ) / 2;
+			projections.exp_ys[dim][bin.mIdx[dim]] += bin.Size();
+		}
+	}
+	//for( auto y : projections.exp_ys[1] )
+	//	std::cout << y << ", ";
+	//std::cout << std::endl;
+
+	return projections;
 }
