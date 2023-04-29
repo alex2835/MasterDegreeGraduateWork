@@ -3,70 +3,16 @@
 #include "utils.hpp"
 #include "bin.hpp"
 #include "migration_mat.hpp"
+#include "system_solver.hpp"
 #include "imgui.h"
 #include "ImGuiFileDialog.h"
 #include <format>
 #include <filesystem>
 
-std::vector<Float> GetMatData( const dfMat& m )
+void UnfoldingApp::UpdateUIData()
 {
-	std::vector<Float> raw( m.rows() * m.cols() );
-	for( int i = 0; i < m.rows(); i++ )
-		for( int j = 0; j < m.cols(); j++ )
-			raw[i * m.rows() + j] = (Float)m[i][j];
-	return raw;
-}
-
-dfVec CalculateSimHistogram( Bins& bins )
-{
-	dfVec hist;
-	hist.setlength( bins.mBins.size() );
-
-	size_t i = 0;
-	for( auto& bin : bins.mBins )
-		hist[i++] = (Float)bin.Size();
-	return hist;
-}
-
-dfVec CalculateExpHistogram( Bins& bins )
-{
-	dfVec hist;
-	hist.setlength( bins.mBins.size() );
-
-	for( auto& bin : bins.mBins )
-	{
-		for( const auto& sim_exp : bin )
-		{
-			auto md_idx = bins.GetBinByValue( sim_exp.second ).mIdx;
-			auto idx = FromMultidimentionalIdx( md_idx, bins.mSize );
-			hist[idx]++;
-		}
-	}
-	return hist;
-}
-
-dfVec CalculateProbabilities( const dfVec& hist )
-{
-	dfVec probabilities;
-	probabilities.setlength( hist.length() );
-
-	Float size = 0;
-	for( int i = 0; i < hist.length(); i++ )
-		size += (Float)hist[i];
-	
-	for( int i = 0; i < hist.length(); i++ )
-		probabilities[i] = hist[i] / size;
-	return probabilities;
-}
-
-// U S Vt
-std::tuple<dfMat, dfVec, dfMat> SVD( const dfMat A )
-{
-	dfMat U;
-	dfVec S;
-	dfMat Vt;
-	alglib::rmatrixsvd( A, A.rows(), A.cols(), 2, 2, 2, S, U, Vt );
-	return { U, S, Vt };
+	mUIData.mProjections1D = Caclucate1DBinningProjections( mBins, mBins.mSize.size() );
+	mUIData.mProjections2D = Caclucate2DBinningProjections( mBins, mBins.mSize.size() );
 }
 
 void UnfoldingApp::TestWithoutUI()
@@ -106,14 +52,22 @@ void UnfoldingApp::TestWithoutUI()
 
 void UnfoldingApp::Init()
 {
-	//TestWithoutUI();
+	auto test_witnout_ui = false;
 
-	mInputData = LoadData( { "res/sim_p_6.txt" } );
-	mMaxDims = (int)mInputData.mCols.size() / 2;
-	mUIData.mBinningType = BinningType::Static;
-	mUIData.mBinsNum = BIN_SIZE;
-	mUIData.mDims = mMaxDims;
-	mUIData.mDimShift = 0;
+	if( test_witnout_ui )
+	{
+		TestWithoutUI();
+		stop();
+	}
+	else
+	{
+		mInputData = LoadData( { "res/sim_p_6.txt" } );
+		mMaxDims = (int)mInputData.mCols.size() / 2;
+		mUIData.mBinningType = BinningType::Static;
+		mUIData.mBinsNum = BIN_SIZE;
+		mUIData.mDims = mMaxDims;
+		mUIData.mDimShift = 0;
+	}
 }
 
 void UnfoldingApp::Update()
@@ -150,6 +104,7 @@ void UnfoldingApp::Update()
 		mUIData.mRebinning = false;
 		mUIData.mUpdateBinningAxises = true;
 		mMigrationMat = CalculateMigrationMat( mBins );
+		UpdateUIData();
 	}
 }
 
@@ -250,7 +205,7 @@ void UnfoldingApp::Draw()
 	{
 		ImGui::Begin( "Binning" );
 		// 1D projection
-		auto projections = Caclucate1DBinningProjections( mBins, mBins.mSize.size() );
+		auto& projections1d = mUIData.mProjections1D;
 		for( size_t dim = 0; dim < mBins.mSize.size(); dim++ )
 		{
 			if( mUIData.mUpdateBinningAxises )
@@ -261,32 +216,27 @@ void UnfoldingApp::Draw()
 				ImPlot::SetNextMarkerStyle( ImPlotMarker_Circle );
 				ImPlot::SetNextFillStyle( ImVec4{ 0.3f, 0.4f, 0.7f, 0.9f }, 0.4f );
 
+				auto& projection1d = projections1d[dim];
 				ImPlot::PlotStems( std::format( "1D Projection dim: {}", dim ).c_str(),
-								   projections.bin_xs[dim].data(),
-								   projections.sim_ys[dim].data(),
-								   (int)projections.bin_xs[dim].size() );
+								   projection1d.bin_xs.data(),
+								   projection1d.sim_ys.data(),
+								   (int)projection1d.bin_xs.size() );
 				ImPlot::EndPlot();
 			}
 		}
 		// 2D projection
+		auto& projections2d = mUIData.mProjections2D;
 		if( mBins.mSize.size() > 1 )
 		{
 			for( size_t dim = 0; dim < mBins.mSize.size(); dim++ )
 			{
-				auto second_dim = ( dim + 1 ) % mBins.mSize.size();
-				auto x_size = mBins.mSize[dim];
-				auto y_size = mBins.mSize[second_dim];
-
-				std::vector<int> hmap( x_size * y_size );
-				for( auto& bin : mBins )
-					hmap[bin.mIdx[dim] * x_size + bin.mIdx[second_dim]] += (int)bin.Size();
-
 				if( ImPlot::BeginPlot( std::format( "##BinningHeat{}", dim ).c_str() ) )
 				{
-					ImPlot::PlotHeatmap( std::format( "2D Projection dims: {} {}", dim, second_dim ).c_str(),
-										 hmap.data(),
-										 (int)x_size,
-										 (int)y_size,
+					auto& projection2d = projections2d[dim];
+					ImPlot::PlotHeatmap( std::format( "2D Projection dims: {} {}", dim, projection2d.second_dim ).c_str(),
+										 projection2d.hmap.data(),
+										 projection2d.x_size,
+										 projection2d.y_size,
 										 0.0,
 										 0.0,
 										 mUIData.mMibrationMatValues ? "%d" : NULL );

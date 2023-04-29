@@ -192,38 +192,66 @@ inline size_t FromMultidimentionalIdx( siVec idx, siVec md_size )
 }
 
 
-struct BinningProjections
+struct BinningProjection1D
 {
-	std::vector<std::vector<Float>> bin_xs;
-	std::vector<std::vector<Float>> sim_ys;
-	std::vector<std::vector<Float>> exp_ys;
+	std::vector<Float> bin_xs;
+	std::vector<Float> sim_ys;
+	std::vector<Float> exp_ys;
 };
+using BinningProjections1D = std::vector<BinningProjection1D>;
 
-inline BinningProjections Caclucate1DBinningProjections( Bins& bins, size_t dims )
+inline BinningProjections1D Caclucate1DBinningProjections( Bins& bins, size_t dims )
 {
-	BinningProjections projections;
+	BinningProjections1D projections;
 	for( size_t dim = 0; dim < dims; dim++ )
 	{
-		projections.bin_xs.push_back( std::vector<Float>( bins.mSize[dim] ) );
-		projections.sim_ys.push_back( std::vector<Float>( bins.mSize[dim] ) );
-		projections.exp_ys.push_back( std::vector<Float>( bins.mSize[dim] ) );
+		projections.push_back( { std::vector<Float>( bins.mSize[dim] ),
+	  						     std::vector<Float>( bins.mSize[dim] ),
+							     std::vector<Float>( bins.mSize[dim] ) } );
 	}
 	for( auto& bin : bins )
 	{
 		for( size_t dim = 0; dim < dims; dim++ )
 		{
-			projections.bin_xs[dim][bin.mIdx[dim]] = ( bin.mEnd[dim] + bin.mBegin[dim] ) / 2;
-			projections.sim_ys[dim][bin.mIdx[dim]] += bin.Size();
+			projections[dim].bin_xs[bin.mIdx[dim]] = ( bin.mEnd[dim] + bin.mBegin[dim] ) / 2;
+			projections[dim].sim_ys[bin.mIdx[dim]] += bin.Size();
 			for( auto& sim_exp : bin )
 			{
 				auto md_idx = bins.GetBinByValue( sim_exp.second ).mIdx;
-				projections.exp_ys[dim][md_idx[dim]]++;
+				projections[dim].exp_ys[md_idx[dim]]++;
 			}
 		}
 	}
-	//for( auto y : projections.exp_ys[1] )
-	//	std::cout << y << ", ";
-	//std::cout << std::endl;
-
 	return projections;
 }
+
+
+struct BinningProjection2D
+{
+	int x_size;
+	int y_size;
+	int second_dim;
+	std::vector<int> hmap;
+};
+using BinningProjections2D = std::vector<BinningProjection2D>;
+
+inline BinningProjections2D Caclucate2DBinningProjections( Bins& bins, size_t dims )
+{
+	BinningProjections2D projections;
+	for( size_t dim = 0; dim < dims; dim++ )
+	{
+		BinningProjection2D projection;
+
+		projection.second_dim = int( ( dim + 1 ) % bins.mSize.size() );
+		projection.x_size = (int)bins.mSize[dim];
+		projection.y_size = (int)bins.mSize[projection.second_dim];
+
+		projection.hmap.resize( projection.x_size * projection.y_size );
+		for( auto& bin : bins )
+			projection.hmap[bin.mIdx[dim] * projection.x_size + bin.mIdx[projection.second_dim]] += (int)bin.Size();
+
+		projections.push_back( std::move( projection ) );
+	}
+	return projections;
+}
+

@@ -32,6 +32,10 @@ class UnfoldingApp : public Application
 
 		bool mRebinning = true;
 		bool mUpdateBinningAxises = false;
+
+		BinningProjections1D mProjections1D;
+		BinningProjections2D mProjections2D;
+		std::vector<Float> mMigrationRaw;
 	};
 	UIData mUIData;
 
@@ -43,5 +47,17 @@ public:
 	void Draw() override;
 	void DrawTopBar();
 
+private:
+	void UpdateUIData();
 	void TestWithoutUI();
 };
+
+
+inline std::vector<Float> GetMatData( const dfMat& m )
+{
+	std::vector<Float> raw( m.rows() * m.cols() );
+	for( int i = 0; i < m.rows(); i++ )
+		for( int j = 0; j < m.cols(); j++ )
+			raw[i * m.rows() + j] = (Float)m[i][j];
+	return raw;
+}
