@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "core/Window.hpp"
-#include "unfolding/unfolding_app.hpp"
 #include "SDL.h"
 
 namespace App {
@@ -19,7 +18,7 @@ enum class ExitStatus : int { SUCCESS = 0, FAILURE = 1 };
 class Application {
  public:
   explicit Application(const std::string& title);
-  ~Application();
+  virtual ~Application();
 
   Application(const Application&) = delete;
   Application(Application&&) = delete;
@@ -34,11 +33,14 @@ class Application {
   void on_shown();
   void on_close();
 
- private:
+  virtual void Init() = 0;
+  virtual void Update() = 0;
+  virtual void Draw() = 0;
+
+ protected:
   ExitStatus m_exit_status{ExitStatus::SUCCESS};
   std::unique_ptr<Window> m_window{nullptr};
   bool m_running{true};
-  UnfoldingApp mUnfoldingApp;
 };
 
 }  // namespace App

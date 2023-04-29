@@ -48,8 +48,8 @@ struct Rows
 struct InputData
 {
 	std::vector<Column> mCols;
-	Rows mExp;
 	Rows mSim;
+	Rows mExp;
 };
 
 InputData LoadData( std::vector<std::string> files );

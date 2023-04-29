@@ -8,7 +8,7 @@ InputData LoadData( std::vector<std::string> files )
 {
 	InputData data;
 
-	// Get cols
+	// Parse cols
 	for( const auto& path : files )
 	{
 		std::ifstream file( path );
@@ -29,15 +29,15 @@ InputData LoadData( std::vector<std::string> files )
 						   std::move_iterator( file_columns.end() ) );
 	}
 
-	// Convert into rows
-	std::vector<Column*> exp_cols;
+	// Convert cols into rows
 	std::vector<Column*> sim_cols;
+	std::vector<Column*> exp_cols;
 	for( auto& col : data.mCols )
 	{
-		if( col.mName.ends_with( "exp" ) )
-			exp_cols.push_back( &col );
-		else
+		if( col.mName.ends_with( "sim" ) )
 			sim_cols.push_back( &col );
+		else
+			exp_cols.push_back( &col );
 	}
 	if( sim_cols.size() != exp_cols.size() )
 		throw std::runtime_error( std::format( "Invalid columns amount sim: {} != exp: {}",
@@ -47,8 +47,8 @@ InputData LoadData( std::vector<std::string> files )
 	{
 		return col1->mName < col2->mName;
 	};
-	std::ranges::sort( exp_cols, sort_func );
 	std::ranges::sort( sim_cols, sort_func );
+	std::ranges::sort( exp_cols, sort_func );
 
 	auto fill_rows = []( std::vector<Column*> cols ) -> Rows
 	{
@@ -64,7 +64,7 @@ InputData LoadData( std::vector<std::string> files )
 		}
 		return rows;
 	};
-	data.mExp = fill_rows( exp_cols );
 	data.mSim = fill_rows( sim_cols );
+	data.mExp = fill_rows( exp_cols );
 	return data;
 }

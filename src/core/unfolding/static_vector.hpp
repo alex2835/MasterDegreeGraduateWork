@@ -6,7 +6,7 @@
 #include <ranges>
 #include <algorithm>
 
-typedef double Float;
+typedef float Float;
 typedef int Int;
 
 template <typename T, size_t MaxSize>
@@ -35,7 +35,7 @@ public:
 		if( idx >= mSize )
 			throw std::runtime_error( std::format( "Out of vector's bound size: {} idx: {}", mSize, idx ) );
 		return mData[idx];
-	}
+ 	}
 
 	T operator[]( size_t idx ) const
 	{

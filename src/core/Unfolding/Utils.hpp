@@ -18,6 +18,7 @@
 
 constexpr size_t BIN_SIZE = 10;
 constexpr size_t MAX_BIN_SIZE = 100;
+constexpr size_t MIN_BIN_SIZE = 2;
 constexpr size_t MAX_VEC_SIZE = 3;
 
 // ============== Types ============== 

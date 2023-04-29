@@ -1,16 +1,16 @@
 #define SDL_MAIN_HANDLED
 
-#include "core/Application.hpp"
+#include "unfolding/unfolding_app.hpp"
 #include "core/Debug/Instrumentor.hpp"
 #include "core/Log.hpp"
 
 int main() {
   try {
-    APP_PROFILE_BEGIN_SESSION_WITH_FILE("App", "profile.json");
+    APP_PROFILE_BEGIN_SESSION_WITH_FILE("Unfolding", "profile.json");
 
     {
       APP_PROFILE_SCOPE("Test scope");
-      App::Application app{"App"};
+      UnfoldingApp app{"Unfolding"};
       app.run();
     }
 

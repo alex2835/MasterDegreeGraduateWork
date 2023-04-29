@@ -1,37 +1,47 @@
 #pragma once
 
+#include "core/Application.hpp"
 #include "load_data.hpp"
 #include "bin.hpp"
 
 #include <imgui.h>
 #include <implot.h>
 
-class UnfoldingApp
+using App::Application;
+
+class UnfoldingApp : public Application
 {
 	InputData mInputData;
 	Bins mBins;
-	dfVec mHistogram;
-	dfVec mProbabilities;
+	Bins mBinsProjection;
 	dfMat mMigrationMat;
 
+	dfVec mHistogram;
+	dfVec mProbabilities;
 	int mMaxDims;
 
 	struct UIData
 	{
 		int mBinsNum;
 		int mDims;
+		int mDimShift;
 		BinningType mBinningType;
 
 		std::string mFilePath;
-		bool mStop = false;
+		bool mMibrationMatValues = false;
+
 		bool mRebinning = true;
+		bool mUpdateBinningAxises = false;
 	};
 	UIData mUIData;
 
 public:
-	void Init();
-	void Update();
-	void Draw();
+	using Application::Application;
+
+	void Init() override;
+	void Update() override;
+	void Draw() override;
 	void DrawTopBar();
-	bool Stop();
+
+	void TestWithoutUI();
 };

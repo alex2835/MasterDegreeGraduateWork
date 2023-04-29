@@ -19,7 +19,6 @@ Application::Application(const std::string& title) {
     m_exit_status = ExitStatus::FAILURE;
   }
   m_window = std::make_unique<Window>(Window::Settings{title});
-  mUnfoldingApp.Init();
 }
 
 Application::~Application() {
@@ -53,6 +52,8 @@ ExitStatus App::Application::run() {
   ImGui_ImplSDL2_InitForSDLRenderer(m_window->get_native_window(), m_window->get_native_renderer());
   ImGui_ImplSDLRenderer_Init(m_window->get_native_renderer());
 
+  Init();
+
   m_running = true;
   while (m_running) {
     APP_PROFILE_SCOPE("MainLoop");
@@ -63,7 +64,7 @@ ExitStatus App::Application::run() {
 
       ImGui_ImplSDL2_ProcessEvent(&event);
 
-      if (event.type == SDL_QUIT || mUnfoldingApp.Stop() ) {
+      if (event.type == SDL_QUIT) {
         stop();
       }
 
@@ -73,16 +74,15 @@ ExitStatus App::Application::run() {
       }
     }
 
-    mUnfoldingApp.Update();
+    Update();
 
     // Start the Dear ImGui frame
     ImGui_ImplSDLRenderer_NewFrame();
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
-
     ImGui::DockSpaceOverViewport();
 
-    mUnfoldingApp.Draw();
+    Draw();
 
     // Rendering
     ImGui::Render();
