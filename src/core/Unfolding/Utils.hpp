@@ -29,6 +29,52 @@ using sfVec = Vector<Float, MAX_VEC_SIZE>;
 using siVec = Vector<int64_t, MAX_VEC_SIZE>;
 
 
+// ============== Stringfication ============== 
+
+template <typename T, size_t S>
+struct std::formatter<Vector<T, S>> : std::formatter<std::string>
+{
+	auto format( const Vector<T, S>& vec, format_context& ctx )
+	{
+		std::string s = "[";
+		for( size_t i = 0; i < vec.size(); i++ )
+			s += std::to_string( vec[i] ) + ", ";
+		s += "]";
+		return formatter<string>::format( s, ctx );
+	}
+};
+
+template <>
+struct std::formatter<dfVec> : std::formatter<std::string>
+{
+	auto format( const dfVec& vec, format_context& ctx )
+	{
+		std::string s = "[";
+		for( int i = 0; i < vec.length(); i++ )
+			s += std::to_string( vec[i] ) + ", ";
+		s += "]";
+		return formatter<string>::format( s, ctx );
+	}
+};
+
+inline std::ostream& operator<<( std::ostream& stream, const dfVec& vec )
+{
+	return stream << std::format( "{}", vec);
+}
+
+inline std::ostream& operator<<( std::ostream& stream, const dfMat& mat )
+{
+	return stream << mat.tostring(2);
+}
+
+template <typename T, size_t S>
+std::ostream& operator<<( std::ostream& stream, const Vector<T, S>& vec )
+{
+	return stream << std::format( "{}", vec );
+}
+
+
+
 // ============== Data ============== 
 
 template <typename Vec>
@@ -85,6 +131,18 @@ inline dfMat MatTranpose( const dfMat& mat )
 	res.setlength( mat.cols(), mat.rows() );
 	alglib::rmatrixtranspose( mat.rows(), mat.cols(), mat, 0, 0, res, 0, 0 );
 	return res;
+}
+
+inline dfMat MatInverse( dfMat mat )
+{
+	alglib::ae_int_t info;
+	alglib::matinvreport rep;
+	alglib::rmatrixinverse( mat, info, rep );
+	if( !info )
+		throw std::runtime_error( 
+				std::format( "Matrix inversion failed with report r1: {} rinf:L {}",
+				rep.r1, rep.rinf ) );
+	return mat;
 }
 
 // ============== Strings ============== 

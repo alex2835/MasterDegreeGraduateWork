@@ -13,18 +13,19 @@ size_t FromMultidimentionalIdx( siVec idx, siVec md_size );
 enum class BinningType
 {
 	Static,
-	Dynamic
+	Dynamic,
+	Hybrid
 };
 
 struct Bin
 {
+	// multidimentional index
 	siVec mIdx;
 	sfVec mBegin;
 	sfVec mEnd;
 	// sim, exp
-	std::set<std::pair<sfVec, sfVec>> mData;
+	std::vector<std::pair<sfVec, sfVec>> mData;
 	
-
 	sfVec Begin()
 	{
 		return mBegin;
@@ -49,9 +50,13 @@ struct Bin
 
 struct Bins
 {
-	std::vector<Bin> mBins;
+private:
+	// begin, end
 	std::vector<std::vector<std::pair<Float, Float>>> mCache;
+public:
+	std::vector<Bin> mBins;
 	siVec mSize;
+
 
 	auto begin()
 	{
@@ -61,6 +66,11 @@ struct Bins
 	auto end()
 	{
 		return mBins.end();
+	}
+
+	size_t Dims()
+	{
+		return mSize.size();
 	}
 
 	size_t OneDimSize()
@@ -79,8 +89,7 @@ struct Bins
 	void PutInBin( std::pair<sfVec, sfVec> sim_exp )
 	{
 		auto& bin = GetBinByValue( sim_exp.first );
-		bin.mData.emplace( sim_exp );
-		//std::cout << std::format( "bins:{} {}  value: {}\n", bin.mBegin, bin.mEnd, exp_sim.first );
+		bin.mData.push_back( sim_exp );
 	}
 
 	Bin& operator[]( size_t idx )
@@ -92,31 +101,11 @@ struct Bins
 
 	Bin& GetBinByValue( sfVec value )
 	{
-		//// Linear
-		//siVec lin_id;
-		//size_t flat_lin_id = 0;
-		//for( auto& bin : mBins )
-		//{
-		//	//std::cout << std::format( "bins:{} {}  value: {} {}\n", bin.mBegin, bin.mEnd, value, 
-		//	//						  bin.mBegin.AllEqualOrLess( value ) && bin.mEnd.AllEqualOrGreater( value ) );
-
-		//	if( bin.mBegin.AllEqualOrLess( value ) &&
-		//		bin.mEnd.AllEqualOrGreater( value ) )  
-		//	{
-		//		//return bin;
-		//		lin_id = bin.mIdx;
-		//		break;
-		//	}
-		//	flat_lin_id++;
-		//}
-		////throw std::runtime_error( std::format( "GetBinByvalue: Out of bins bound {}", value ) );
-
-		// Binary
 		if( mCache.empty() )
 			CalculateCache();
 
 		siVec idx;
-		for( size_t dim = 0; dim < mSize.size(); dim++ )
+		for( size_t dim = 0; dim < Dims(); dim++ )
 		{
 			auto ptr = std::ranges::lower_bound( mCache[dim], std::pair( value[dim], value[dim] ),
 				[]( std::pair<Float, Float> bin,
@@ -145,13 +134,12 @@ struct Bins
 private:
 	void CalculateCache()
 	{
-		for( size_t dim = 0; dim < mSize.size(); dim++ )
+		for( size_t dim = 0; dim < Dims(); dim++ )
 			mCache.push_back( std::vector<std::pair<Float,Float>>( mSize[dim] ) );
 		for( auto& bin : mBins )
-			for( size_t dim = 0; dim < mSize.size(); dim++ )
+			for( size_t dim = 0; dim < Dims(); dim++ )
 				mCache[dim][bin.mIdx[dim]] = { bin.mBegin[dim] , bin.mEnd[dim] };
 	}
-
 };
 
 Bins CalculateBins( std::span<sfVec> sim,
@@ -160,6 +148,7 @@ Bins CalculateBins( std::span<sfVec> sim,
 					size_t dims_shift,
 					BinningType type,
 					Int bins_count );
+
 
 inline size_t MultiDimPow( siVec md_size, size_t dim )
 {
@@ -200,10 +189,10 @@ struct BinningProjection1D
 };
 using BinningProjections1D = std::vector<BinningProjection1D>;
 
-inline BinningProjections1D Caclucate1DBinningProjections( Bins& bins, size_t dims )
+inline BinningProjections1D Caclucate1DBinningProjections( Bins& bins )
 {
 	BinningProjections1D projections;
-	for( size_t dim = 0; dim < dims; dim++ )
+	for( size_t dim = 0; dim < bins.Dims(); dim++ )
 	{
 		projections.push_back( { std::vector<Float>( bins.mSize[dim] ),
 	  						     std::vector<Float>( bins.mSize[dim] ),
@@ -211,7 +200,7 @@ inline BinningProjections1D Caclucate1DBinningProjections( Bins& bins, size_t di
 	}
 	for( auto& bin : bins )
 	{
-		for( size_t dim = 0; dim < dims; dim++ )
+		for( size_t dim = 0; dim < bins.Dims(); dim++ )
 		{
 			projections[dim].bin_xs[bin.mIdx[dim]] = ( bin.mEnd[dim] + bin.mBegin[dim] ) / 2;
 			projections[dim].sim_ys[bin.mIdx[dim]] += bin.Size();
@@ -235,14 +224,14 @@ struct BinningProjection2D
 };
 using BinningProjections2D = std::vector<BinningProjection2D>;
 
-inline BinningProjections2D Caclucate2DBinningProjections( Bins& bins, size_t dims )
+inline BinningProjections2D Caclucate2DBinningProjections( Bins& bins )
 {
 	BinningProjections2D projections;
-	for( size_t dim = 0; dim < dims; dim++ )
+	for( size_t dim = 0; dim < bins.Dims(); dim++ )
 	{
 		BinningProjection2D projection;
 
-		projection.second_dim = int( ( dim + 1 ) % bins.mSize.size() );
+		projection.second_dim = int( ( dim + 1 ) % bins.Dims() );
 		projection.x_size = (int)bins.mSize[dim];
 		projection.y_size = (int)bins.mSize[projection.second_dim];
 

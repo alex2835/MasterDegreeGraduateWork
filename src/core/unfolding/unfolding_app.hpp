@@ -16,9 +16,11 @@ class UnfoldingApp : public Application
 	Bins mBinsProjection;
 	dfMat mMigrationMat;
 
-	dfVec mHistogram;
-	dfVec mProbabilities;
 	int mMaxDims;
+	std::span<sfVec> mTrainingSim;
+	std::span<sfVec> mTrainingExp;
+	std::span<sfVec> mTestingSim;
+	std::span<sfVec> mTestingExp;
 
 	struct UIData
 	{
@@ -32,6 +34,7 @@ class UnfoldingApp : public Application
 
 		bool mRebinning = true;
 		bool mUpdateBinningAxises = false;
+		bool mUpdateErrorAxises = false;
 
 		BinningProjections1D mProjections1D;
 		BinningProjections2D mProjections2D;
@@ -48,16 +51,7 @@ public:
 	void DrawTopBar();
 
 private:
+	void LoadData( const std::string& filename );
 	void UpdateUIData();
 	void TestWithoutUI();
 };
-
-
-inline std::vector<Float> GetMatData( const dfMat& m )
-{
-	std::vector<Float> raw( m.rows() * m.cols() );
-	for( int i = 0; i < m.rows(); i++ )
-		for( int j = 0; j < m.cols(); j++ )
-			raw[i * m.rows() + j] = (Float)m[i][j];
-	return raw;
-}

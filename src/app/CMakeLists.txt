@@ -1,4 +1,4 @@
-set(NAME "App")
+set(NAME "UnfoldingApp")
 
 include(${PROJECT_SOURCE_DIR}/cmake/StaticAnalyzers.cmake)
 

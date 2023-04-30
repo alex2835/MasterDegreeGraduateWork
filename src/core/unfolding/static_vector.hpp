@@ -6,7 +6,7 @@
 #include <ranges>
 #include <algorithm>
 
-typedef float Float;
+typedef double Float;
 typedef int Int;
 
 template <typename T, size_t MaxSize>
@@ -161,19 +161,5 @@ public:
 			res[i] = static_cast<C>( mData[i] );
 		return res;
 
-	}
-};
-
-
-template <typename T, size_t S>
-struct std::formatter<Vector<T, S>> : std::formatter<std::string>
-{
-	auto format( Vector<T, S> vec, format_context& ctx )
-	{
-		std::string s = "[";
-		for( size_t i = 0; i < vec.size(); i++ )
-			s += std::to_string( vec[i] ) + ", ";
-		s += "]";
-		return formatter<string>::format( s, ctx );
 	}
 };

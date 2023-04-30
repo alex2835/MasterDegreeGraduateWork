@@ -51,9 +51,6 @@ Bins FixedSizeBinning( const std::span<sfVec> sim,
 	for( size_t dim = 0; dim < dims; dim++ )
 		step[dim] = ( max[dim] - min[dim] ) / (Float)bins_count;
 
-	//std::cout << "min" << std::format("{}", min) << std::endl;
-	//std::cout << "max" << std::format("{}", max) << std::endl;
-
 	Bins bins;
 	bins.mSize = siVec( dims, bins_count );				
 
@@ -61,10 +58,6 @@ Bins FixedSizeBinning( const std::span<sfVec> sim,
 	{
 		siVec multi_dim_idx = ToMultidimentionalIdx( i, dims, bins_count );
 		siVec next = multi_dim_idx + 1;
-
-		//std::cout << std::format( "{}", multi_dim_idx ) << std::endl;
-		//std::cout << std::format( "{}", next ) << std::endl;
-
 		bins.PutBin( Bin{ multi_dim_idx,
 						  min + step * multi_dim_idx.cast<Float>(),
 						  min + step * next.cast<Float>() } );
@@ -78,6 +71,44 @@ Bins FixedSizeBinning( const std::span<sfVec> sim,
 	return  bins;
 }
 
+void DynamicBinning( Bins& bins, size_t iterations )
+{
+	if( iterations < 1 )
+		return;
+
+	for( Bin& bin : bins )
+		std::ranges::sort( bin );
+
+	std::vector<std::vector<size_t>> projections;
+	for( size_t dim = 0; dim < bins.Dims(); dim++ )
+		projections.push_back( std::vector<size_t>( bins.mSize[dim] ) );
+
+	for( auto& bin : bins )
+		for( size_t dim = 0; dim < bins.Dims(); dim++ )
+			projections[dim][bin.mIdx[dim]] += bin.Size();
+
+	size_t max = 0;
+	size_t max_dim;
+	size_t max_bin;
+
+	for( size_t dim = 0; dim < bins.Dims(); dim++ )
+	{
+		const auto& projection = projections[dim];
+		for( size_t i = 0; i < projection.size(); i++ )
+		{
+			if( projection[i] > max )
+			{
+				max = projection[i];
+				max_dim = dim;
+				max_bin = i;
+			}
+		}
+	}
+
+	
+
+}
+
 Bins CalculateBins( const std::span<sfVec> sim, 
 					const std::span<sfVec> exp,
 					size_t dims,
@@ -88,16 +119,20 @@ Bins CalculateBins( const std::span<sfVec> sim,
 	if( sim.size() == 0 || exp.size() == 0 )
 		throw std::runtime_error( "Input data are empty" );
 
-	// Split into bins
 	switch( type )
 	{
 	case BinningType::Static:
 		return FixedSizeBinning( sim, exp, dims, dims_shift, bins_count );
 		break;
 	case BinningType::Dynamic:
-		std::cout << "Dynamic binning not implemented yet" << std::endl;
+	{
+		auto bins = FixedSizeBinning( sim, exp, dims, dims_shift, 2 );
+		DynamicBinning( bins, bins_count - 2 );
+		return bins;
+	}
+	case BinningType::Hybrid:
+		std::cout << "Hybrid is not supported yes" << std::endl;
 		return FixedSizeBinning( sim, exp, dims, dims_shift, bins_count );
-		break;
 	}
 	throw std::runtime_error( "Invalid binning type" );
 }

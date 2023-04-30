@@ -25,7 +25,8 @@ InputData LoadData( std::vector<std::string> files )
 			for( auto value : Split( line, ","sv ) )
 				file_columns[i++].mData.push_back( ParseFloat( std::string( Trim( value ) ) ) );
 		}
-		data.mCols.insert( data.mCols.end(), std::move_iterator( file_columns.begin() ),
+		data.mCols.insert( data.mCols.end(), 
+						   std::move_iterator( file_columns.begin() ),
 						   std::move_iterator( file_columns.end() ) );
 	}
 

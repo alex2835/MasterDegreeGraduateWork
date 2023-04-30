@@ -9,59 +9,70 @@
 #include <format>
 #include <filesystem>
 
+
+inline std::vector<Float> GetMatRawData( const dfMat& m )
+{
+	std::vector<Float> raw( m.rows() * m.cols() );
+	for( int i = 0; i < m.rows(); i++ )
+		for( int j = 0; j < m.cols(); j++ )
+			raw[i * m.rows() + j] = (Float)m[i][j];
+	return raw;
+}
+
 void UnfoldingApp::UpdateUIData()
 {
-	mUIData.mProjections1D = Caclucate1DBinningProjections( mBins, mBins.mSize.size() );
-	mUIData.mProjections2D = Caclucate2DBinningProjections( mBins, mBins.mSize.size() );
+	mUIData.mProjections1D = Caclucate1DBinningProjections( mBins );
+	mUIData.mProjections2D = Caclucate2DBinningProjections( mBins );
+	mUIData.mMigrationRaw = GetMatRawData( mMigrationMat );
+}
+
+
+void UnfoldingApp::LoadData( const std::string& filename )
+{
+	mInputData = ::LoadData( { filename } );
+	mMaxDims = (int)mInputData.mCols.size() / 2;
+
+	size_t parts = 2;
+	auto splited_sim = SplitData( ToSpan( mInputData.mSim ), parts );
+	auto splited_exp = SplitData( ToSpan( mInputData.mExp ), parts );
+	mTrainingSim = splited_sim[0];
+	mTrainingExp = splited_exp[0];
+	mTestingSim = splited_sim[1];
+	mTestingExp = splited_exp[1];
 }
 
 void UnfoldingApp::TestWithoutUI()
 {
-	mInputData = LoadData( { "res/sim_p_6.txt" } );
+	LoadData( "res/sim_p_6.txt" );
 	mMaxDims = (int)mInputData.mCols.size() / 2;
 	mUIData.mBinningType = BinningType::Static;
 	mUIData.mBinsNum = BIN_SIZE;
-	mUIData.mDims = 2;
+	mUIData.mDims = 1;
 	mUIData.mDimShift = 0;
-
-	size_t parts = 2;
-	auto splited_exp = SplitData( ToSpan( mInputData.mExp ), parts );
-	auto splited_sim = SplitData( ToSpan( mInputData.mSim ), parts );
-
-	mBins = CalculateBins( splited_exp[0],
-						   splited_exp[0],
+	
+	mBins = CalculateBins( mTrainingSim,
+						   mTrainingExp,
 						   mUIData.mDims,
 						   mUIData.mDimShift,
 						   mUIData.mBinningType,
 						   mUIData.mBinsNum );
 	mMigrationMat = CalculateMigrationMat( mBins );
-	auto[ u,s,vt ] = SVD( mMigrationMat );
 
-	mHistogram = CalculateSimHistogram( mBins );
-	mProbabilities = CalculateProbabilities( mHistogram );
-
-	std::cout << "probabilities: ";
-	for( int i = 0; i < mProbabilities.length(); i++ )
-		std::cout << mProbabilities[i] << " ";
-
-	std::cout << "\nU\n" << u.tostring( 3 ) << std::endl;
-	std::cout << "S\n" << s.tostring( 3 ) << std::endl;
-	std::cout << "Vt\n" << vt.tostring( 3 ) << std::endl;
+	//auto solution = SolveSystem( mMigrationMat, mBins );
 }
 
 
 void UnfoldingApp::Init()
 {
 	auto test_witnout_ui = false;
-
 	if( test_witnout_ui )
 	{
 		TestWithoutUI();
 		stop();
 	}
 	else
-	{
-		mInputData = LoadData( { "res/sim_p_6.txt" } );
+	{ 
+		LoadData( "res/sim_p_6.txt" );
 		mMaxDims = (int)mInputData.mCols.size() / 2;
 		mUIData.mBinningType = BinningType::Static;
 		mUIData.mBinsNum = BIN_SIZE;
@@ -76,9 +87,7 @@ void UnfoldingApp::Update()
 	if( !mUIData.mFilePath.empty() )
 	{
 		try {
-			mInputData = LoadData( { mUIData.mFilePath } );
-			mMaxDims = (int)mInputData.mCols.size() / 2;
-			mUIData.mDims = mMaxDims;
+			LoadData( mUIData.mFilePath );
 			mUIData.mRebinning = true;
 		}
 		catch( const std::exception& e ) {
@@ -103,6 +112,7 @@ void UnfoldingApp::Update()
 							   mUIData.mBinsNum );
 		mUIData.mRebinning = false;
 		mUIData.mUpdateBinningAxises = true;
+		mUIData.mUpdateErrorAxises = true;
 		mMigrationMat = CalculateMigrationMat( mBins );
 		UpdateUIData();
 	}
@@ -206,7 +216,7 @@ void UnfoldingApp::Draw()
 		ImGui::Begin( "Binning" );
 		// 1D projection
 		auto& projections1d = mUIData.mProjections1D;
-		for( size_t dim = 0; dim < mBins.mSize.size(); dim++ )
+		for( size_t dim = 0; dim < mBins.Dims(); dim++ )
 		{
 			if( mUIData.mUpdateBinningAxises )
 				ImPlot::SetNextAxesToFit();
@@ -222,13 +232,15 @@ void UnfoldingApp::Draw()
 								   projection1d.sim_ys.data(),
 								   (int)projection1d.bin_xs.size() );
 				ImPlot::EndPlot();
+				mUIData.mUpdateBinningAxises = false;
 			}
 		}
 		// 2D projection
+		ImPlot::PushColormap( ImPlotColormap_Viridis );
 		auto& projections2d = mUIData.mProjections2D;
-		if( mBins.mSize.size() > 1 )
+		if( mBins.Dims() > 1 )
 		{
-			for( size_t dim = 0; dim < mBins.mSize.size(); dim++ )
+			for( size_t dim = 0; dim < mBins.Dims(); dim++ )
 			{
 				if( ImPlot::BeginPlot( std::format( "##BinningHeat{}", dim ).c_str() ) )
 				{
@@ -244,33 +256,105 @@ void UnfoldingApp::Draw()
 				}
 			}
 		}
-		mUIData.mUpdateBinningAxises = false;
+		ImPlot::PopColormap();
 		ImGui::End();
 	}
 
 
 	// Migration mat
 	ImGui::Begin( "Migration" );
-	static ImPlotColormap map = ImPlotColormap_Viridis;
-	ImGui::SameLine();
-	ImGui::LabelText( "##Colormap Index", "%s", "Change Colormap" );
-	ImGui::SetNextItemWidth( 300 );
-	ImPlot::PushColormap( map );
-
-	if( ImPlot::BeginPlot( "##Heatmap1", ImVec2( -1, -1 ), ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText ) )
 	{
-		ImPlot::PlotHeatmap( "Migration mat",
-							 GetMatData(mMigrationMat).data(),
-							 (int)mMigrationMat.rows(),
-							 (int)mMigrationMat.cols(),
-							 0.0, 
-							 1.0 / mMigrationMat.rows(),
-							 mUIData.mMibrationMatValues? "%.3f" : NULL,
-							 ImPlotPoint(0, 0),
-							 ImPlotPoint(1, 1));
-		ImPlot::EndPlot();
+		ImPlot::PushColormap( ImPlotColormap_Viridis );
+		if( ImPlot::BeginPlot( "##Heatmap", ImVec2( -1, -1 ), ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText ) )
+		{
+			ImPlot::PlotHeatmap( "Migration mat",
+								 mUIData.mMigrationRaw.data(),
+								 (int)mMigrationMat.rows(),
+								 (int)mMigrationMat.cols(),
+								 0.0,
+								 1.0 / mMigrationMat.rows(),
+								 mUIData.mMibrationMatValues ? "%.3f" : NULL,
+								 ImPlotPoint( 0, 0 ),
+								 ImPlotPoint( 1, 1 ) );
+			ImPlot::EndPlot();
+		}
+		ImPlot::PopColormap();
 	}
 	ImGui::End();
+
+
+	// Errors
+	ImGui::Begin( "Error" );
+	{
+		if( mUIData.mUpdateErrorAxises )
+			ImPlot::SetNextAxesToFit();
+
+		if( ImPlot::BeginPlot( "##OriginalError" ) )
+		{
+			auto sim_hist = CalculateHistogram( mBins, mTestingSim );
+			auto exp_hist = CalculateHistogram( mBins, mTestingExp );
+			std::vector<Float> xs;
+			for( int i = 0; i < sim_hist.length(); i++ )
+				xs.push_back( i );
+
+			ImPlot::SetNextFillStyle( ImVec4{ 0.7f, 0.4f, 0.1f, 0.9f }, 0.4f );
+			ImPlot::PlotBars( "sim hist", xs.data(), sim_hist.getcontent(), (int)sim_hist.length(), 0.4 );
+			
+			ImPlot::SetNextFillStyle( ImVec4{ 0.3f, 0.4f, 0.7f, 0.9f }, 0.4f );
+			ImPlot::PlotBars( "exp hist", xs.data(), exp_hist.getcontent(), (int)exp_hist.length(), 0.4 );
+
+			Float total_error = 0;
+			std::vector<Float> ys;
+			std::vector<Float> errors;
+			for( int i = 0; i < sim_hist.length(); i++ )
+			{
+				Float e = std::pow( ( sim_hist[i] - exp_hist[i] ), 2 );
+				ys.push_back( ( sim_hist[i] + exp_hist[i] ) / 2 );
+				errors.push_back( e );
+				total_error += e;
+			}
+			total_error /= (Float)xs.size();
+			ImPlot::PlotErrorBars( "Sqr error", xs.data(), ys.data(), errors.data(), (int)xs.size() );
+			ImPlot::EndPlot();
+
+			ImGui::Text( "MSE %0.3f", total_error );
+		}
+
+		//if( ImPlot::BeginPlot( "##SolutionError" ) )
+		//{
+		//	auto solution = SolveSystem( mMigrationMat, mBins );
+		//	auto exp_hist = CalculateExpHistogram( mBins );
+
+		//	std::vector<Float> xs;
+		//	for( int i = 0; i < solution.length(); i++ )
+		//		xs.push_back( i );
+
+		//	ImPlot::SetNextFillStyle( ImVec4{ 0.7f, 0.4f, 0.1f, 0.9f }, 0.4f );
+		//	ImPlot::PlotBars( "sim hist", xs.data(), solution.getcontent(), (int)solution.length(), 0.4 );
+
+		//	ImPlot::SetNextFillStyle( ImVec4{ 0.3f, 0.4f, 0.7f, 0.9f }, 0.4f );
+		//	ImPlot::PlotBars( "exp hist", xs.data(), exp_hist.getcontent(), (int)exp_hist.length(), 0.4 );
+
+		//	Float total_error = 0;
+		//	std::vector<Float> ys;
+		//	std::vector<Float> errors;
+		//	for( int i = 0; i < solution.length(); i++ )
+		//	{
+		//		Float e = std::pow( ( solution[i] - exp_hist[i] ), 2 );
+		//		ys.push_back( ( solution[i] + exp_hist[i] ) / 2 );
+		//		errors.push_back( e );
+		//		total_error += e;
+		//	}
+		//	total_error /= (Float)xs.size();
+		//	ImPlot::PlotErrorBars( "Sqr error", xs.data(), ys.data(), errors.data(), (int)xs.size() );
+
+		//	ImPlot::EndPlot();
+		//	ImGui::Text( "MSE %0.3f", total_error );
+		//}
+		mUIData.mUpdateErrorAxises = false;
+	}
+	ImGui::End();
+
 
 	ImPlot::ShowDemoWindow();
 }

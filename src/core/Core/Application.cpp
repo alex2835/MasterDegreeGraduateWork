@@ -54,7 +54,6 @@ ExitStatus App::Application::run() {
 
   Init();
 
-  m_running = true;
   while (m_running) {
     APP_PROFILE_SCOPE("MainLoop");
 
