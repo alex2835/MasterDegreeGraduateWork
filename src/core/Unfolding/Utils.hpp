@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <charconv>
 #include <string>
+#include <iomanip>
 #include <stdexcept>
 #include <vector>
 #include <array>
@@ -64,7 +65,16 @@ inline std::ostream& operator<<( std::ostream& stream, const dfVec& vec )
 
 inline std::ostream& operator<<( std::ostream& stream, const dfMat& mat )
 {
-	return stream << mat.tostring(2);
+	for( int i = 0; i < mat.rows(); i++ )
+	{
+		stream << "[ ";
+		for( int j = 0; j < mat.cols(); j++ )
+			stream << std::setw( 5 ) <<
+					  std::setfill( ' ' ) <<
+					  mat[i][j] << ", ";
+		stream << "]\n";
+	}
+	return stream;
 }
 
 template <typename T, size_t S>
@@ -105,23 +115,71 @@ inline dfMat CreateSqrMat( size_t size )
 	return mat;
 }
 
+inline dfMat CreateSqrIdentityMat( size_t size, Float value = 1.0 )
+{
+	auto mat = CreateSqrMat( size );
+	for( int i = 0; i < mat.rows(); i++ )
+		mat[i][i] = value;
+	return mat;
+}
+
 inline dfVec MatVecMul( const dfMat& mat, const dfVec& vec )
 {
+	if( mat.rows() != vec.length() )
+	{
+		std::cout << "rows " << mat.rows() << " cols " << mat.cols() << " vecl " << vec.length() << "\n";
+		throw std::runtime_error( "MatVec mul failed: invalid mat vec sizes" );
+	}
+
 	dfVec res;
-	res.setlength( mat.rows() );
-	alglib::rmatrixmv( mat.rows(), mat.cols(), mat, 0, 0, 0, vec, 0, res, 0 );
+	res.setlength( vec.length() );
+	alglib::rmatrixgemv( mat.rows(), mat.cols(), 1, mat, 0, 0, 0, vec, 0, 1, res, 0 );
 	return res;
 }
 
 inline dfMat MatMul( const dfMat& mat1, const dfMat& mat2 )
 {
-	if( mat1.rows() != mat2.cols() )
+	if( mat1.cols() != mat2.rows() )
 		throw std::runtime_error( std::format( "MatMul: Invalid mat sizes: mat1: {} {}, mat2: {} {}",
 								  mat1.rows(), mat1.cols(), mat2.rows(), mat2.cols() ) );
 
 	dfMat res;
 	res.setlength( mat1.rows(), mat2.cols() );
-	alglib::rmatrixgemm( mat1.rows(), mat2.cols(), mat1.cols(), 0, mat1, 0, 0, 0, mat2, 0, 0, 0, 0, res, 0, 0 );
+	alglib::rmatrixgemm( mat1.rows(), mat2.cols(), mat1.cols(), 1, mat1, 0, 0, 0, mat2, 0, 0, 0, 0, res, 0, 0 );
+	return res;
+}
+
+inline dfMat MatMulColMajor( const dfMat& mat1, const dfMat& mat2 )
+{
+	dfMat res;
+	res.setlength( mat1.rows(), mat2.cols() );
+	for( int i = 0; i < res.rows(); i++ )
+		for( int j = 0; j < res.cols(); j++ )
+			res[i][j] = 0;
+
+	for( int i = 0; i < mat1.rows(); i++ )
+	{
+		for( int j = 0; j < mat2.cols(); j++ )
+		{
+			res[j][i] = 0;
+			for( int k = 0; k < mat1.cols(); k++ )
+				res[j][i] += mat1[k][i] * mat2[j][k];
+		}
+	}
+	return res;
+}
+
+inline dfVec MatVecMulColMajor( const dfMat& mat, const dfVec& vec )
+{
+	dfVec res;
+	res.setlength( vec.length() );
+	for( int i = 0; i < vec.length(); i++ )
+		res[i] = 0;
+
+	for( int i = 0; i < mat.rows(); i++ )
+		for( int j = 0; j < mat.cols(); j++ )
+			res[i] += mat[j][i] * vec[j];
+
 	return res;
 }
 
@@ -138,7 +196,7 @@ inline dfMat MatInverse( dfMat mat )
 	alglib::ae_int_t info;
 	alglib::matinvreport rep;
 	alglib::rmatrixinverse( mat, info, rep );
-	if( !info )
+	if( info == -3 )
 		throw std::runtime_error( 
 				std::format( "Matrix inversion failed with report r1: {} rinf:L {}",
 				rep.r1, rep.rinf ) );

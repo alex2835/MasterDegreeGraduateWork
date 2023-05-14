@@ -14,7 +14,7 @@ enum class BinningType
 {
 	Static,
 	Dynamic,
-	Hybrid
+	DynamicMedian
 };
 
 struct Bin
@@ -26,15 +26,7 @@ struct Bin
 	// sim, exp
 	std::vector<std::pair<sfVec, sfVec>> mData;
 	
-	sfVec Begin()
-	{
-		return mBegin;
-	}
-	sfVec End()
-	{
-		return mEnd;
-	}
-	size_t Size()
+	size_t Size() const
 	{
 		return mData.size();
 	}
@@ -46,14 +38,20 @@ struct Bin
 	{
 		return mData.end();
 	}
+	auto begin() const
+	{
+		return mData.cbegin();
+	}
+	auto end() const
+	{
+		return mData.cend();
+	}
 };
 
 struct Bins
 {
-private:
 	// begin, end
-	std::vector<std::vector<std::pair<Float, Float>>> mCache;
-public:
+	mutable std::vector<std::vector<std::pair<Float, Float>>> mCache;
 	std::vector<Bin> mBins;
 	siVec mSize;
 
@@ -62,18 +60,25 @@ public:
 	{
 		return mBins.begin();
 	}
-
 	auto end()
 	{
 		return mBins.end();
 	}
+	auto begin() const
+	{
+		return mBins.cbegin();
+	}
+	auto end() const
+	{
+		return mBins.cend();
+	}
 
-	size_t Dims()
+	size_t Dims() const
 	{
 		return mSize.size();
 	}
 
-	size_t OneDimSize()
+	size_t OneDimSize() const
 	{
 		size_t res = 1;
 		for( auto dim_size : mSize )
@@ -99,7 +104,17 @@ public:
 		return mBins[idx];
 	}
 
+	const Bin& GetBinByValue( sfVec value ) const
+	{
+		return mBins[GetBinIdxByValue( value )];
+	}
+
 	Bin& GetBinByValue( sfVec value )
+	{
+		return mBins[GetBinIdxByValue( value )];
+	}
+
+	size_t GetBinIdxByValue( sfVec value ) const
 	{
 		if( mCache.empty() )
 			CalculateCache();
@@ -108,8 +123,8 @@ public:
 		for( size_t dim = 0; dim < Dims(); dim++ )
 		{
 			auto ptr = std::ranges::lower_bound( mCache[dim], std::pair( value[dim], value[dim] ),
-				[]( std::pair<Float, Float> bin,
-					std::pair<Float, Float> value )
+												 []( std::pair<Float, Float> bin,
+												 std::pair<Float, Float> value )
 			{
 				return bin.first <= value.first;
 			} );
@@ -120,6 +135,7 @@ public:
 				if( value[dim] <= mCache[dim][last_id].second )
 					idx.push_back( last_id );
 				else
+					//std::cout << std::format( "GetBinByValue miss: {}", value );
 					throw std::runtime_error( std::format( "GetBinByvalue: Out of bins bound {}", value ) );
 			}
 			else
@@ -128,15 +144,15 @@ public:
 				idx.push_back( std::max( (int)dist, 0 ) );
 			}
 		}
-		return mBins[FromMultidimentionalIdx( idx, mSize )];
+		return FromMultidimentionalIdx( idx, mSize );
 	}
 
 private:
-	void CalculateCache()
+	void CalculateCache() const
 	{
 		for( size_t dim = 0; dim < Dims(); dim++ )
 			mCache.push_back( std::vector<std::pair<Float,Float>>( mSize[dim] ) );
-		for( auto& bin : mBins )
+		for( const auto& bin : mBins )
 			for( size_t dim = 0; dim < Dims(); dim++ )
 				mCache[dim][bin.mIdx[dim]] = { bin.mBegin[dim] , bin.mEnd[dim] };
 	}
@@ -149,6 +165,24 @@ Bins CalculateBins( std::span<sfVec> sim,
 					BinningType type,
 					Int bins_count );
 
+inline sfVec ShiftDimTransform( const sfVec& vec,
+								size_t dims,
+								size_t shift_dims )
+{
+	sfVec res( dims );
+	for( size_t i = 0; i < dims; i++ )
+		res[i] = vec[( i + shift_dims ) % vec.size()];
+	return res;
+}
+
+inline std::pair<sfVec, sfVec> ShiftDimTransform( const std::pair<sfVec, sfVec>& pair,
+												  size_t dims,
+												  size_t shift_dims )
+{
+	auto f = ShiftDimTransform( pair.first, dims, shift_dims );
+	auto s = ShiftDimTransform( pair.second, dims, shift_dims );
+	return { f, s };
+}
 
 inline size_t MultiDimPow( siVec md_size, size_t dim )
 {
@@ -184,27 +218,30 @@ inline size_t FromMultidimentionalIdx( siVec idx, siVec md_size )
 struct BinningProjection1D
 {
 	std::vector<Float> bin_xs;
+	std::vector<Float> bin_width;
 	std::vector<Float> sim_ys;
 	std::vector<Float> exp_ys;
 };
 using BinningProjections1D = std::vector<BinningProjection1D>;
 
-inline BinningProjections1D Caclucate1DBinningProjections( Bins& bins )
+inline BinningProjections1D Caclucate1DBinningProjections( const Bins& bins )
 {
 	BinningProjections1D projections;
 	for( size_t dim = 0; dim < bins.Dims(); dim++ )
 	{
 		projections.push_back( { std::vector<Float>( bins.mSize[dim] ),
 	  						     std::vector<Float>( bins.mSize[dim] ),
+							     std::vector<Float>( bins.mSize[dim] ),
 							     std::vector<Float>( bins.mSize[dim] ) } );
 	}
-	for( auto& bin : bins )
+	for( const auto& bin : bins )
 	{
 		for( size_t dim = 0; dim < bins.Dims(); dim++ )
 		{
+			projections[dim].bin_width[bin.mIdx[dim]] = ( bin.mEnd[dim] - bin.mBegin[dim] ) / 2;
 			projections[dim].bin_xs[bin.mIdx[dim]] = ( bin.mEnd[dim] + bin.mBegin[dim] ) / 2;
 			projections[dim].sim_ys[bin.mIdx[dim]] += bin.Size();
-			for( auto& sim_exp : bin )
+			for( const auto& sim_exp : bin )
 			{
 				auto md_idx = bins.GetBinByValue( sim_exp.second ).mIdx;
 				projections[dim].exp_ys[md_idx[dim]]++;
@@ -224,7 +261,7 @@ struct BinningProjection2D
 };
 using BinningProjections2D = std::vector<BinningProjection2D>;
 
-inline BinningProjections2D Caclucate2DBinningProjections( Bins& bins )
+inline BinningProjections2D Caclucate2DBinningProjections( const Bins& bins )
 {
 	BinningProjections2D projections;
 	for( size_t dim = 0; dim < bins.Dims(); dim++ )
@@ -236,7 +273,7 @@ inline BinningProjections2D Caclucate2DBinningProjections( Bins& bins )
 		projection.y_size = (int)bins.mSize[projection.second_dim];
 
 		projection.hmap.resize( projection.x_size * projection.y_size );
-		for( auto& bin : bins )
+		for( const auto& bin : bins )
 			projection.hmap[bin.mIdx[dim] * projection.x_size + bin.mIdx[projection.second_dim]] += (int)bin.Size();
 
 		projections.push_back( std::move( projection ) );

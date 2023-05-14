@@ -23,6 +23,15 @@ public:
 		std::ranges::fill( mData, value );
 	}
 
+	Vector( std::initializer_list<T> list )
+	{
+		if( list.size() >= MaxSize )
+			throw std::runtime_error( "Initialer list bigger then max size of static vec" );
+
+		for( const auto& value : list )
+			mData[mSize++] = value;
+	}
+
 	void push_back( const T& f )
 	{
 		if( mSize >= mData.size() )
@@ -54,7 +63,15 @@ public:
 	}
 	auto end()
 	{
-		return mData.end();
+		return mData.begin() + mSize;
+	}
+	auto begin() const
+	{
+		return mData.cbegin();
+	}
+	auto end() const
+	{
+		return mData.cbegin() + mSize;
 	}
 
 	Vector<T, MaxSize>& operator= ( const Vector<T, MaxSize>& other )

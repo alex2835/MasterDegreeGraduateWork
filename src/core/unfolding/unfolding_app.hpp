@@ -28,6 +28,9 @@ class UnfoldingApp : public Application
 		int mDims;
 		int mDimShift;
 		BinningType mBinningType;
+		bool mDebugOuput = false;
+		float mAlpha = 0.001f;
+		float mAlphaLow = 0.0001f;
 
 		std::string mFilePath;
 		bool mMibrationMatValues = false;
@@ -39,6 +42,9 @@ class UnfoldingApp : public Application
 		BinningProjections1D mProjections1D;
 		BinningProjections2D mProjections2D;
 		std::vector<Float> mMigrationRaw;
+		dfVec mSimTestHist;
+		dfVec mExpTestHist;
+		dfVec mSolution;
 	};
 	UIData mUIData;
 
@@ -52,6 +58,7 @@ public:
 
 private:
 	void LoadData( const std::string& filename );
+	void LoadDataGaus( Float M, Float D );
 	void UpdateUIData();
 	void TestWithoutUI();
 };

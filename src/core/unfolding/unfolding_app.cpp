@@ -8,6 +8,7 @@
 #include "ImGuiFileDialog.h"
 #include <format>
 #include <filesystem>
+#include <random>
 
 
 inline std::vector<Float> GetMatRawData( const dfMat& m )
@@ -24,13 +25,19 @@ void UnfoldingApp::UpdateUIData()
 	mUIData.mProjections1D = Caclucate1DBinningProjections( mBins );
 	mUIData.mProjections2D = Caclucate2DBinningProjections( mBins );
 	mUIData.mMigrationRaw = GetMatRawData( mMigrationMat );
+	mUIData.mSimTestHist = CalculateHistogram( mBins, mTrainingSim, mUIData.mDimShift );
+	mUIData.mExpTestHist = CalculateHistogram( mBins, mTrainingExp, mUIData.mDimShift );
+	mUIData.mSolution = SolveSystem( mMigrationMat, mBins, mUIData.mSimTestHist, mUIData.mAlpha + mUIData.mAlphaLow / 1000000, mUIData.mDebugOuput);
 }
-
 
 void UnfoldingApp::LoadData( const std::string& filename )
 {
+	mInputData = InputData();
+
 	mInputData = ::LoadData( { filename } );
 	mMaxDims = (int)mInputData.mCols.size() / 2;
+	mUIData.mDims = mMaxDims;
+	mUIData.mDimShift = 0;
 
 	size_t parts = 2;
 	auto splited_sim = SplitData( ToSpan( mInputData.mSim ), parts );
@@ -41,12 +48,52 @@ void UnfoldingApp::LoadData( const std::string& filename )
 	mTestingExp = splited_exp[1];
 }
 
+void UnfoldingApp::LoadDataGaus( Float M, Float D )
+{
+	mInputData = InputData();
+
+	std::random_device rd{};
+	std::mt19937 gen{ rd() };
+	std::normal_distribution<> d{ M, D };
+	std::normal_distribution<> smear{ -3.5, 0.5 };
+
+	Column sim( "sim" );
+	Column exp( "exp" );
+	mInputData.mSim.mNames.push_back( "sim" );
+	mInputData.mExp.mNames.push_back( "exp" );
+
+	for( size_t i = 0; i < 1000000; i++ )
+	{
+		auto exp_value = d( gen );
+		auto sim_value = 0.5 * exp_value + smear( gen );
+		sim.mData.push_back( sim_value );
+		exp.mData.push_back( exp_value );
+		mInputData.mSim.mData.push_back( sfVec{ sim_value } );
+		mInputData.mExp.mData.push_back( sfVec{ exp_value } );
+	}
+	mInputData.mCols.push_back( std::move( sim ) );
+	mInputData.mCols.push_back( std::move( exp ) );
+
+	size_t parts = 2;
+	auto splited_sim = SplitData( ToSpan( mInputData.mSim ), parts );
+	auto splited_exp = SplitData( ToSpan( mInputData.mExp ), parts );
+	mTrainingSim = splited_sim[0];
+	mTrainingExp = splited_exp[0];
+	mTestingSim = splited_sim[1];
+	mTestingExp = splited_exp[1];
+
+	mMaxDims = 1;
+	mUIData.mDims = mMaxDims;
+	mUIData.mDimShift = 0;
+}
+
+
 void UnfoldingApp::TestWithoutUI()
 {
 	LoadData( "res/sim_p_6.txt" );
-	mMaxDims = (int)mInputData.mCols.size() / 2;
+	mMaxDims = (int)mInputData.mExp.Size();
 	mUIData.mBinningType = BinningType::Static;
-	mUIData.mBinsNum = BIN_SIZE;
+	mUIData.mBinsNum = 4;
 	mUIData.mDims = 1;
 	mUIData.mDimShift = 0;
 	
@@ -57,8 +104,8 @@ void UnfoldingApp::TestWithoutUI()
 						   mUIData.mBinningType,
 						   mUIData.mBinsNum );
 	mMigrationMat = CalculateMigrationMat( mBins );
-
-	//auto solution = SolveSystem( mMigrationMat, mBins );
+	auto m = CalculateHistogram( mBins, mTrainingSim, mUIData.mDimShift );
+	auto solution = SolveSystem( mMigrationMat, mBins, m, 0.1f, true );
 }
 
 
@@ -73,10 +120,11 @@ void UnfoldingApp::Init()
 	else
 	{ 
 		LoadData( "res/sim_p_6.txt" );
+		//LoadDataGaus( 5, 2.5 );
 		mMaxDims = (int)mInputData.mCols.size() / 2;
 		mUIData.mBinningType = BinningType::Static;
 		mUIData.mBinsNum = BIN_SIZE;
-		mUIData.mDims = mMaxDims;
+		mUIData.mDims = 1;
 		mUIData.mDimShift = 0;
 	}
 }
@@ -104,8 +152,8 @@ void UnfoldingApp::Update()
 		mMigrationMat = dfMat();
 
 		// calculate
-		mBins = CalculateBins( ToSpan( mInputData.mExp ), 
-							   ToSpan( mInputData.mSim ),
+		mBins = CalculateBins( mTrainingSim,
+							   mTrainingExp,
 							   mUIData.mDims,
 							   mUIData.mDimShift,
 							   mUIData.mBinningType,
@@ -125,9 +173,21 @@ void UnfoldingApp::DrawTopBar()
 		if( ImGui::BeginMenu( "File" ) )
 		{
 			if( ImGui::MenuItem( "Open" ) )
-				ImGuiFileDialog::Instance()->OpenDialog( "ChooseFileDlgKey", "Choose File", ".txt", ".");
+			{
+				ImGuiFileDialog::Instance()->OpenDialog( "ChooseFileDlgKey", "Choose File", ".txt", "." );
+				mUIData.mRebinning = true;
+			}
 			if( ImGui::MenuItem( "Exit" ) )
 				stop();
+			ImGui::EndMenu();
+		}
+		if( ImGui::BeginMenu( "Examples" ) )
+		{
+			if( ImGui::MenuItem( "Gaus" ) )
+			{
+				LoadDataGaus( 5, 2 );
+				mUIData.mRebinning = true;
+			}
 			ImGui::EndMenu();
 		}
 		if( ImGui::BeginMenu( "Source code" ) )
@@ -162,7 +222,16 @@ void UnfoldingApp::Draw()
 
 		if( ImGui::SliderInt( "Bins", &mUIData.mBinsNum, MIN_BIN_SIZE, MAX_BIN_SIZE ) )
 			mUIData.mRebinning = true;
-		if( ImGui::Combo( "Binning type", (int*)&mUIData.mBinningType, "static\0dynamic", 2 ) )
+		if( ImGui::Combo( "Binning type", (int*)&mUIData.mBinningType, "static\0dynamic\0dynamic median", 3 ) )
+			mUIData.mRebinning = true;
+		
+		if( ImGui::SliderFloat( "Alpha", &mUIData.mAlpha, 0.001f, 10.3f ) )
+			mUIData.mRebinning = true;
+
+		if( ImGui::SliderFloat( "AlphaLow", &mUIData.mAlphaLow, 1, 1000 ) )
+			mUIData.mRebinning = true;
+
+		if( ImGui::Checkbox( "Debug output", &mUIData.mDebugOuput ) )
 			mUIData.mRebinning = true;
 
 		ImGui::Checkbox( "Migration mat values", &mUIData.mMibrationMatValues );
@@ -232,9 +301,10 @@ void UnfoldingApp::Draw()
 								   projection1d.sim_ys.data(),
 								   (int)projection1d.bin_xs.size() );
 				ImPlot::EndPlot();
-				mUIData.mUpdateBinningAxises = false;
 			}
 		}
+		mUIData.mUpdateBinningAxises = false;
+
 		// 2D projection
 		ImPlot::PushColormap( ImPlotColormap_Viridis );
 		auto& projections2d = mUIData.mProjections2D;
@@ -272,7 +342,7 @@ void UnfoldingApp::Draw()
 								 (int)mMigrationMat.rows(),
 								 (int)mMigrationMat.cols(),
 								 0.0,
-								 1.0 / mMigrationMat.rows(),
+								 1.0,
 								 mUIData.mMibrationMatValues ? "%.3f" : NULL,
 								 ImPlotPoint( 0, 0 ),
 								 ImPlotPoint( 1, 1 ) );
@@ -291,8 +361,9 @@ void UnfoldingApp::Draw()
 
 		if( ImPlot::BeginPlot( "##OriginalError" ) )
 		{
-			auto sim_hist = CalculateHistogram( mBins, mTestingSim );
-			auto exp_hist = CalculateHistogram( mBins, mTestingExp );
+			auto& sim_hist = mUIData.mSimTestHist;
+			auto& exp_hist = mUIData.mExpTestHist;
+
 			std::vector<Float> xs;
 			for( int i = 0; i < sim_hist.length(); i++ )
 				xs.push_back( i );
@@ -320,37 +391,43 @@ void UnfoldingApp::Draw()
 			ImGui::Text( "MSE %0.3f", total_error );
 		}
 
-		//if( ImPlot::BeginPlot( "##SolutionError" ) )
-		//{
-		//	auto solution = SolveSystem( mMigrationMat, mBins );
-		//	auto exp_hist = CalculateExpHistogram( mBins );
+		if( mUIData.mUpdateErrorAxises )
+			ImPlot::SetNextAxesToFit();
 
-		//	std::vector<Float> xs;
-		//	for( int i = 0; i < solution.length(); i++ )
-		//		xs.push_back( i );
+		if( ImPlot::BeginPlot( "##SolutionError" ) )
+		{
+			auto& sim_hist = mUIData.mSimTestHist;
+			auto& exp_hist = mUIData.mExpTestHist;
+			auto& solution = mUIData.mSolution;
+			
+			std::vector<Float> xs;
+			for( int i = 0; i < solution.length(); i++ )
+				xs.push_back( i );
 
-		//	ImPlot::SetNextFillStyle( ImVec4{ 0.7f, 0.4f, 0.1f, 0.9f }, 0.4f );
-		//	ImPlot::PlotBars( "sim hist", xs.data(), solution.getcontent(), (int)solution.length(), 0.4 );
+			ImPlot::SetNextFillStyle( ImVec4{ 0.7f, 0.4f, 0.1f, 0.9f }, 0.4f );
+			ImPlot::PlotBars( "sim hist", xs.data(), sim_hist.getcontent(), (int)sim_hist.length(), 0.4 );
 
-		//	ImPlot::SetNextFillStyle( ImVec4{ 0.3f, 0.4f, 0.7f, 0.9f }, 0.4f );
-		//	ImPlot::PlotBars( "exp hist", xs.data(), exp_hist.getcontent(), (int)exp_hist.length(), 0.4 );
+			ImPlot::SetNextFillStyle( ImVec4{ 0.3f, 0.4f, 0.7f, 0.9f }, 0.4f );
+			ImPlot::PlotBars( "exp hist", xs.data(), exp_hist.getcontent(), (int)exp_hist.length(), 0.4 );
 
-		//	Float total_error = 0;
-		//	std::vector<Float> ys;
-		//	std::vector<Float> errors;
-		//	for( int i = 0; i < solution.length(); i++ )
-		//	{
-		//		Float e = std::pow( ( solution[i] - exp_hist[i] ), 2 );
-		//		ys.push_back( ( solution[i] + exp_hist[i] ) / 2 );
-		//		errors.push_back( e );
-		//		total_error += e;
-		//	}
-		//	total_error /= (Float)xs.size();
-		//	ImPlot::PlotErrorBars( "Sqr error", xs.data(), ys.data(), errors.data(), (int)xs.size() );
+			ImPlot::SetNextFillStyle( ImVec4{ 0.3f, 0.7f, 0.5f, 0.9f }, 0.2f );
+			ImPlot::PlotBars( "solution", xs.data(), solution.getcontent(), (int)solution.length(), 0.4 );
 
-		//	ImPlot::EndPlot();
-		//	ImGui::Text( "MSE %0.3f", total_error );
-		//}
+			Float total_error = 0;
+			std::vector<Float> ys;
+			std::vector<Float> errors;
+			for( int i = 0; i < solution.length(); i++ )
+			{
+				Float e = std::pow( ( solution[i] - exp_hist[i] ), 2 );
+				ys.push_back( ( solution[i] + exp_hist[i] ) / 2 );
+				errors.push_back( e );
+				total_error += e;
+			}
+			total_error /= (Float)xs.size();
+			ImPlot::PlotErrorBars( "Sqr error", xs.data(), ys.data(), errors.data(), (int)xs.size() );
+			ImPlot::EndPlot();
+			ImGui::Text( "MSE %0.3f", total_error );
+		}
 		mUIData.mUpdateErrorAxises = false;
 	}
 	ImGui::End();

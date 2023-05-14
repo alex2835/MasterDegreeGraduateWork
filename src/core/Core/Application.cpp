@@ -90,7 +90,7 @@ ExitStatus App::Application::run() {
     SDL_RenderClear(m_window->get_native_renderer());
     ImGui_ImplSDLRenderer_RenderDrawData(ImGui::GetDrawData());
     SDL_RenderPresent(m_window->get_native_renderer());
-  }
+  } 
 
   return m_exit_status;
 }
