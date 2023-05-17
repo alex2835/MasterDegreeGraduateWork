@@ -25,6 +25,14 @@ struct Bin
 	sfVec mEnd;
 	// sim, exp
 	std::vector<std::pair<sfVec, sfVec>> mData;
+
+	size_t ValueInBin( const sfVec& value ) const
+	{
+		//if( mBegin[0] <= value[0] &&  value[0] <= mEnd[0] )
+		//	std::cout << "begin " << mBegin << " end " << mEnd << " value " << value  << "\n";
+		return mBegin.AllEqualOrLessThen( value ) &&
+			   mEnd.AllEqualOrGreaterThen( value );
+	}
 	
 	size_t Size() const
 	{
@@ -98,6 +106,13 @@ struct Bins
 	}
 
 	Bin& operator[]( size_t idx )
+	{
+		if( idx > mBins.size() )
+			throw std::runtime_error( std::format( "operator[]: Out of bins bound {}", idx ) );
+		return mBins[idx];
+	}
+	
+	const Bin& operator[]( size_t idx ) const
 	{
 		if( idx > mBins.size() )
 			throw std::runtime_error( std::format( "operator[]: Out of bins bound {}", idx ) );

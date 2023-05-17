@@ -6,7 +6,7 @@
 #include <sstream>
 
 
-dfVec CalculateHistogram( Bins& bins, std::span<sfVec> data, size_t dim_shift )
+inline dfVec CalculateHistogram( Bins& bins, std::span<sfVec> data, size_t dim_shift )
 {
 	dfVec hist;
 	hist.setlength( bins.mBins.size() );
@@ -22,7 +22,7 @@ dfVec CalculateHistogram( Bins& bins, std::span<sfVec> data, size_t dim_shift )
 	return hist;
 }
 
-dfVec CalculateProbabilities( const dfVec& hist )
+inline dfVec CalculateProbabilities( const dfVec& hist )
 {
 	dfVec probabilities;
 	probabilities.setlength( hist.length() );
@@ -36,54 +36,89 @@ dfVec CalculateProbabilities( const dfVec& hist )
 	return probabilities;
 }
 
+inline bool IsNaigbors( const Bin& first, const Bin& second )
+{
+	size_t sum = 0;
+	for( size_t i = 0; i < first.mIdx.size(); i++ )
+		sum += abs( first.mIdx[i] - second.mIdx[i] );
+	return sum == 1;
+}
 
-dfMat CalculateLinearNeighborsMat( const Bins& bins )
+inline dfMat CalculateBinaryNeighborsMat( const Bins& bins )
 {
 	auto size = bins.OneDimSize();
 	auto mat = CreateSqrMat( size );
-	for( size_t i = 1; i < size - 1; i++ )
+	for( size_t i = 0; i < size; i++ )
 	{
-		mat[i][i - 1] = -1;
-		mat[i][i] = 2;
-		mat[i][i + 1] = -1;
+		int sum = 0;
+		for( size_t j = 0; j < size; j++ )
+		{
+			int value = IsNaigbors( bins[i], bins[j] );
+			mat[i][j] = -value;
+			sum += value;
+		}
+		mat[i][i] = sum;
 	}
-	mat[0][0] = 1;
-	mat[0][1] = -1;
-	mat[size - 1][size - 2] = -1;
-	mat[size - 1][size - 1] = 1;
 	return mat;
 }
 
-
-enum class NeighborsType
+inline Float NeighborsProximity( const Bin& first, const Bin& second )
 {
-	C,
-	KBinary,
-	KNotBinary
+	Float proximity = 0;
+	for( const auto& pair : first )
+		proximity += second.ValueInBin( pair.second );
+	return proximity;
+}
+
+inline dfMat CalculateNotBinaryNeighborsMat( const Bins& bins )
+{
+	auto size = bins.OneDimSize();
+	auto mat = CreateSqrMat( size );
+	for( size_t i = 0; i < size; i++ )
+	{
+		Float sum = 0;
+		for( size_t j = 0; j < size; j++ )
+		{
+			if( !IsNaigbors( bins[i], bins[j] ) )
+				continue;
+			Float value = NeighborsProximity( bins[i], bins[j] );
+			mat[i][j] = -value;
+			sum += value;
+		}
+		mat[i][i] = sum;
+		for( size_t j = 0; j < size; j++ )
+			mat[i][j] /= ( sum ? sum : 1 );
+	}
+	return mat;
+}
+
+enum class NeighborsMatType
+{
+	Binary,
+	Nonbinary,
 };
 
 // C or K mat
-dfMat CalculateNeighborsMat( const Bins& bins, NeighborsType type )
+inline dfMat CalculateNeighborsMat( const Bins& bins, NeighborsMatType type )
 {
 	switch( type )
 	{
-	case NeighborsType::C:
-		return CalculateLinearNeighborsMat( bins );
-	case NeighborsType::KBinary:
-	case NeighborsType::KNotBinary:
-		return dfMat();
+	case NeighborsMatType::Binary:
+		return CalculateBinaryNeighborsMat( bins );
+	case NeighborsMatType::Nonbinary:
+		return CalculateNotBinaryNeighborsMat( bins );
 	}
 	throw std::runtime_error( "Invaid Meighbors type" );
 }
 
-dfMat FluctuateMat( dfMat mat )
+inline dfMat FluctuateMat( dfMat mat )
 {
 	for( int i = 0; i < mat.rows(); i++ )
-		mat[i][i] += 0.0001;
+		mat[i][i] += 0.001;
 	return mat;
 }
 
-dfMat ExtendSystemMat( const dfMat& mat, Float alpha )
+inline dfMat ExtendSystemMat( const dfMat& mat, Float alpha )
 {
 	dfMat res;
 	res.setlength( mat.rows() * 2, mat.cols() );
@@ -96,7 +131,7 @@ dfMat ExtendSystemMat( const dfMat& mat, Float alpha )
 	return res;
 }
 
-Float FindMaxSingularDiffValue( const dfVec& vec )
+inline Float FindMaxSingularDiffValue( const dfVec& vec )
 {
 	Float max_dif = 0;
 	Float max = 0;
@@ -112,7 +147,7 @@ Float FindMaxSingularDiffValue( const dfVec& vec )
 }
 
 // U s Vt
-std::tuple<dfMat, dfVec, dfMat> SVD( const dfMat A )
+inline std::tuple<dfMat, dfVec, dfMat> SVD( const dfMat A )
 {
 	dfMat U;
 	dfVec s;
@@ -121,24 +156,26 @@ std::tuple<dfMat, dfVec, dfMat> SVD( const dfMat A )
 	return { U, s, Vt };
 }
 
-dfVec SolveSystem( const dfMat& A,
-				   const Bins& bins,
-				   dfVec m,
-				   double alpha,
-				   bool debug )
+inline dfVec SolveSystem( const dfMat& A,
+						  const Bins& bins,
+						  dfVec m,
+						  NeighborsMatType nighbors_type,
+						  double alpha,
+						  bool debug )
 {
 	std::stringstream out;
 	//auto& out = std::cout;
 
 	out << "m\n" << m << "\n\n";
-	out << "A\n" << A << std::endl;
+	out << "A\n" << A << "\n\n";
 
-	auto C = CalculateNeighborsMat( bins, NeighborsType::C );
+	auto C = CalculateNeighborsMat( bins, nighbors_type );
 	auto Cf = FluctuateMat( C );
+	out << "C\n" << C << "\n\n";
 	auto Ci = MatInverse( Cf );
 
 	auto AxCi = MatMul( A, Ci );
-	out << "AxCi\n" << AxCi << std::endl;
+	out << "AxCi\n" << AxCi << "\n\n";
 
 	auto eAxCi = ExtendSystemMat( AxCi, std::sqrt( alpha ) );
 	out << "hAxCi\n" << eAxCi << "\n\n";
@@ -152,7 +189,7 @@ dfVec SolveSystem( const dfMat& A,
 	out << "s\n" << s << "\n\n";
 	out << "Vt\n" << Vt << "\n\n";
 
-	std::cout << "alpha \n" << alpha << "\n\n";
+	out << "alpha \n" << alpha << "\n\n";
 
 	auto Ut = MatTranpose( U );
 	out << "Ut\n" << Ut << "\n\n";
@@ -172,8 +209,7 @@ dfVec SolveSystem( const dfMat& A,
 	out << "z\n" << z << "\n\n";
 
 	auto V = MatTranpose( Vt );
-	auto CixV = V;
-	auto tau = MatVecMul( CixV, z );
+	auto tau = MatVecMul( V, z );
 
 	out << "tau\n" << tau << "\n\n";
 

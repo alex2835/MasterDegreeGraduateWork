@@ -2,6 +2,7 @@
 
 #include "core/Application.hpp"
 #include "load_data.hpp"
+#include "system_solver.hpp"
 #include "bin.hpp"
 
 #include <imgui.h>
@@ -28,6 +29,7 @@ class UnfoldingApp : public Application
 		int mDims;
 		int mDimShift;
 		BinningType mBinningType;
+		NeighborsMatType mNeighborsMatType;
 		bool mDebugOuput = false;
 		float mAlpha = 0.001f;
 		float mAlphaLow = 0.0001f;

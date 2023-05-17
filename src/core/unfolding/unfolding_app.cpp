@@ -27,7 +27,12 @@ void UnfoldingApp::UpdateUIData()
 	mUIData.mMigrationRaw = GetMatRawData( mMigrationMat );
 	mUIData.mSimTestHist = CalculateHistogram( mBins, mTrainingSim, mUIData.mDimShift );
 	mUIData.mExpTestHist = CalculateHistogram( mBins, mTrainingExp, mUIData.mDimShift );
-	mUIData.mSolution = SolveSystem( mMigrationMat, mBins, mUIData.mSimTestHist, mUIData.mAlpha + mUIData.mAlphaLow / 1000000, mUIData.mDebugOuput);
+	mUIData.mSolution = SolveSystem( mMigrationMat, 
+									 mBins,
+									 mUIData.mSimTestHist,
+									 mUIData.mNeighborsMatType,
+									 mUIData.mAlpha + mUIData.mAlphaLow / 1000000,
+									 mUIData.mDebugOuput);
 }
 
 void UnfoldingApp::LoadData( const std::string& filename )
@@ -105,7 +110,7 @@ void UnfoldingApp::TestWithoutUI()
 						   mUIData.mBinsNum );
 	mMigrationMat = CalculateMigrationMat( mBins );
 	auto m = CalculateHistogram( mBins, mTrainingSim, mUIData.mDimShift );
-	auto solution = SolveSystem( mMigrationMat, mBins, m, 0.1f, true );
+	auto solution = SolveSystem( mMigrationMat, mBins, m, NeighborsMatType::Nonbinary, 0.1f, true );
 }
 
 
@@ -123,6 +128,7 @@ void UnfoldingApp::Init()
 		//LoadDataGaus( 5, 2.5 );
 		mMaxDims = (int)mInputData.mCols.size() / 2;
 		mUIData.mBinningType = BinningType::Static;
+		mUIData.mNeighborsMatType = NeighborsMatType::Binary;
 		mUIData.mBinsNum = BIN_SIZE;
 		mUIData.mDims = 1;
 		mUIData.mDimShift = 0;
@@ -224,6 +230,9 @@ void UnfoldingApp::Draw()
 			mUIData.mRebinning = true;
 		if( ImGui::Combo( "Binning type", (int*)&mUIData.mBinningType, "static\0dynamic\0dynamic median", 3 ) )
 			mUIData.mRebinning = true;
+
+		if( ImGui::Combo( "Neighbors mat type", (int*)&mUIData.mNeighborsMatType, "binary\0nonbinary", 2 ) )
+			mUIData.mRebinning = true;
 		
 		if( ImGui::SliderFloat( "Alpha", &mUIData.mAlpha, 0.001f, 10.3f ) )
 			mUIData.mRebinning = true;
@@ -235,6 +244,9 @@ void UnfoldingApp::Draw()
 			mUIData.mRebinning = true;
 
 		ImGui::Checkbox( "Migration mat values", &mUIData.mMibrationMatValues );
+
+		if( ImGui::Button( "rebuild", ImVec2( 100, 40 ) ) )
+			mUIData.mRebinning = true;
 	}
 	ImGui::End();
 
@@ -432,7 +444,6 @@ void UnfoldingApp::Draw()
 	}
 	ImGui::End();
 
-
-	ImPlot::ShowDemoWindow();
+	//ImPlot::ShowDemoWindow();
 }
 
