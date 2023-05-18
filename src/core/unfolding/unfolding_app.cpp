@@ -251,6 +251,8 @@ void UnfoldingApp::Draw()
 	ImGui::End();
 
 
+	ImGui::StyleColorsLight();
+
 	// Histogram
 	ImGui::Begin( "Histogram" );
 	{
@@ -318,7 +320,6 @@ void UnfoldingApp::Draw()
 		mUIData.mUpdateBinningAxises = false;
 
 		// 2D projection
-		ImPlot::PushColormap( ImPlotColormap_Viridis );
 		auto& projections2d = mUIData.mProjections2D;
 		if( mBins.Dims() > 1 )
 		{
@@ -338,7 +339,6 @@ void UnfoldingApp::Draw()
 				}
 			}
 		}
-		ImPlot::PopColormap();
 		ImGui::End();
 	}
 
@@ -346,7 +346,15 @@ void UnfoldingApp::Draw()
 	// Migration mat
 	ImGui::Begin( "Migration" );
 	{
-		ImPlot::PushColormap( ImPlotColormap_Viridis );
+		static ImPlotColormap map = ImPlotColormap_Greys;
+		if( ImPlot::ColormapButton( ImPlot::GetColormapName( map ), ImVec2( -1, 0 ), map ) )
+			map = ( map + 1 ) % ImPlot::GetColormapCount();
+
+		ImPlot::PushColormap( map );
+		
+		ImPlot::ColormapScale( "Color range", 0, 1, ImVec2( 0, -1 ) );
+		ImGui::SameLine();
+
 		if( ImPlot::BeginPlot( "##Heatmap", ImVec2( -1, -1 ), ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText ) )
 		{
 			ImPlot::PlotHeatmap( "Migration mat",

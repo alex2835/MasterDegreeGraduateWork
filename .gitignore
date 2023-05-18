@@ -3,3 +3,5 @@ profile.json
 *-profile.json
 *.log
 **/.vs/
+**/build/
+**/.vscode/
