@@ -18,7 +18,7 @@
 // ============== Consts ============== 
 
 constexpr size_t BIN_SIZE = 10;
-constexpr size_t MAX_BIN_SIZE = 100;
+constexpr size_t MAX_BIN_SIZE = 200;
 constexpr size_t MIN_BIN_SIZE = 2;
 constexpr size_t MAX_VEC_SIZE = 3;
 
@@ -130,10 +130,9 @@ inline dfVec MatVecMul( const dfMat& mat, const dfVec& vec )
 		std::cout << "rows " << mat.rows() << " cols " << mat.cols() << " vecl " << vec.length() << "\n";
 		throw std::runtime_error( "MatVec mul failed: invalid mat vec sizes" );
 	}
-
 	dfVec res;
-	res.setlength( vec.length() );
-	alglib::rmatrixgemv( mat.rows(), mat.cols(), 1, mat, 0, 0, 0, vec, 0, 1, res, 0 );
+	res.setlength( mat.rows() );
+	alglib::rmatrixmv( mat.rows(), mat.cols(), mat, 0, 0, 0, vec, 0, res, 0 );
 	return res;
 }
 

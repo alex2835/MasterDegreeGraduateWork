@@ -307,7 +307,7 @@ void UnfoldingApp::Draw()
 			if( ImPlot::BeginPlot( std::format( "##Binning{}", dim ).c_str() ) )
 			{
 				ImPlot::SetNextMarkerStyle( ImPlotMarker_Circle );
-				ImPlot::SetNextFillStyle( ImVec4{ 0.3f, 0.4f, 0.7f, 0.9f }, 0.4f );
+				ImPlot::SetNextFillStyle( ImVec4{ 0.7f, 0.4f, 0.1f, 0.9f }, 0.4f );
 
 				auto& projection1d = projections1d[dim];
 				ImPlot::PlotStems( std::format( "1D Projection dim: {}", dim ).c_str(),
@@ -320,6 +320,7 @@ void UnfoldingApp::Draw()
 		mUIData.mUpdateBinningAxises = false;
 
 		// 2D projection
+		ImPlot::PushColormap( mUIData.mColorMap );
 		auto& projections2d = mUIData.mProjections2D;
 		if( mBins.Dims() > 1 )
 		{
@@ -339,6 +340,7 @@ void UnfoldingApp::Draw()
 				}
 			}
 		}
+		ImPlot::PopColormap();
 		ImGui::End();
 	}
 
@@ -346,12 +348,11 @@ void UnfoldingApp::Draw()
 	// Migration mat
 	ImGui::Begin( "Migration" );
 	{
-		static ImPlotColormap map = ImPlotColormap_Greys;
-		if( ImPlot::ColormapButton( ImPlot::GetColormapName( map ), ImVec2( -1, 0 ), map ) )
-			map = ( map + 1 ) % ImPlot::GetColormapCount();
+		ImPlot::PushColormap( mUIData.mColorMap );
 
-		ImPlot::PushColormap( map );
-		
+		if( ImPlot::ColormapButton( ImPlot::GetColormapName( mUIData.mColorMap ), ImVec2( -1, 0 ), mUIData.mColorMap ) )
+			mUIData.mColorMap = ( mUIData.mColorMap + 1 ) % ImPlot::GetColormapCount();
+
 		ImPlot::ColormapScale( "Color range", 0, 1, ImVec2( 0, -1 ) );
 		ImGui::SameLine();
 
@@ -449,6 +450,28 @@ void UnfoldingApp::Draw()
 			ImGui::Text( "MSE %0.3f", total_error );
 		}
 		mUIData.mUpdateErrorAxises = false;
+	}
+	ImGui::End();
+
+
+	// Singular values
+	ImGui::Begin( "Singular valus" );
+	{
+		if( ImPlot::BeginPlot( "##Alpha" ) )
+		{
+			auto [U, s, Vt] = SVD( mMigrationMat );
+			//const auto& m = mUIData.mSimTestHist;
+			//auto Ut = MatTranpose( U );
+			//auto d = MatVecMul( Ut, m );
+			std::vector<Float> xs;
+			for( int i = 0; i < s.length(); i++ )
+			{
+				s[i] = std::log( s[i] );
+				xs.push_back( i );
+			}
+			ImPlot::PlotBars( "alpha", xs.data(), s.getcontent(), (int)s.length(), 0.4 );
+			ImPlot::EndPlot();
+		}
 	}
 	ImGui::End();
 

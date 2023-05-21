@@ -27,7 +27,7 @@ inline dfMat CalculateMigrationMat( Bins& bins )
 	//		mat[i][j] /= amount ? amount : 1.0;
 	//}
 
-	// Mega hack
+	// Ooops
 	Bins new_bins = bins;
 	for( auto& bin : new_bins )
 		bin.mData.clear();

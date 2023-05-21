@@ -36,6 +36,8 @@ class UnfoldingApp : public Application
 
 		std::string mFilePath;
 		bool mMibrationMatValues = false;
+		ImPlotColormap mColorMap = ImPlotColormap_Greys;
+
 
 		bool mRebinning = true;
 		bool mUpdateBinningAxises = false;
