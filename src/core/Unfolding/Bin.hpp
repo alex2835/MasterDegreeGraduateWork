@@ -119,6 +119,11 @@ struct Bins
 		return mBins[idx];
 	}
 
+	bool HitBinRange( sfVec value ) const
+	{
+		return GetBinIdxByValue( value ) != -1;
+	}
+
 	const Bin& GetBinByValue( sfVec value ) const
 	{
 		return mBins[GetBinIdxByValue( value )];
@@ -129,7 +134,7 @@ struct Bins
 		return mBins[GetBinIdxByValue( value )];
 	}
 
-	size_t GetBinIdxByValue( sfVec value ) const
+	int GetBinIdxByValue( sfVec value ) const
 	{
 		if( mCache.empty() )
 			CalculateCache();
@@ -150,8 +155,11 @@ struct Bins
 				if( value[dim] <= mCache[dim][last_id].second )
 					idx.push_back( last_id );
 				else
-					//std::cout << std::format( "GetBinByValue miss: {}", value );
-					throw std::runtime_error( std::format( "GetBinByvalue: Out of bins bound {}", value ) );
+				{
+					//std::cout << std::format( "GetBinByValue miss: {}", value ) << std::endl;
+					//throw std::runtime_error( std::format( "GetBinByvalue: Out of bins bound {}", value ) );
+					return -1;
+				}
 			}
 			else
 			{
@@ -159,7 +167,7 @@ struct Bins
 				idx.push_back( std::max( (int)dist, 0 ) );
 			}
 		}
-		return FromMultidimentionalIdx( idx, mSize );
+		return (int)FromMultidimentionalIdx( idx, mSize );
 	}
 
 private:

@@ -31,7 +31,7 @@ class UnfoldingApp : public Application
 		BinningType mBinningType;
 		NeighborsMatType mNeighborsMatType;
 		bool mDebugOuput = false;
-		float mAlpha = 0.001f;
+		float mAlpha = 0.000f;
 		float mAlphaLow = 0.0001f;
 
 		std::string mFilePath;

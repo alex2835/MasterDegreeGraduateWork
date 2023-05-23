@@ -25,14 +25,14 @@ void UnfoldingApp::UpdateUIData()
 	mUIData.mProjections1D = Caclucate1DBinningProjections( mBins );
 	mUIData.mProjections2D = Caclucate2DBinningProjections( mBins );
 	mUIData.mMigrationRaw = GetMatRawData( mMigrationMat );
-	mUIData.mSimTestHist = CalculateHistogram( mBins, mTrainingSim, mUIData.mDimShift );
-	mUIData.mExpTestHist = CalculateHistogram( mBins, mTrainingExp, mUIData.mDimShift );
+	mUIData.mSimTestHist = CalculateHistogram( mBins, mTestingSim, mUIData.mDimShift );
+	mUIData.mExpTestHist = CalculateHistogram( mBins, mTestingExp, mUIData.mDimShift );
 	mUIData.mSolution = SolveSystem( mMigrationMat, 
 									 mBins,
 									 mUIData.mSimTestHist,
 									 mUIData.mNeighborsMatType,
 									 mUIData.mAlpha + mUIData.mAlphaLow / 1000000,
-									 mUIData.mDebugOuput);
+									 mUIData.mDebugOuput );
 }
 
 void UnfoldingApp::LoadData( const std::string& filename )
@@ -234,10 +234,10 @@ void UnfoldingApp::Draw()
 		if( ImGui::Combo( "Neighbors mat type", (int*)&mUIData.mNeighborsMatType, "binary\0nonbinary", 2 ) )
 			mUIData.mRebinning = true;
 		
-		if( ImGui::SliderFloat( "Alpha", &mUIData.mAlpha, 0.001f, 10.3f ) )
+		if( ImGui::SliderFloat( "Alpha", &mUIData.mAlpha, 0.0f, 0.1f ) )
 			mUIData.mRebinning = true;
 
-		if( ImGui::SliderFloat( "AlphaLow", &mUIData.mAlphaLow, 1, 1000 ) )
+		if( ImGui::SliderFloat( "AlphaLow", &mUIData.mAlphaLow, 0, 1000 ) )
 			mUIData.mRebinning = true;
 
 		if( ImGui::Checkbox( "Debug output", &mUIData.mDebugOuput ) )
@@ -457,19 +457,26 @@ void UnfoldingApp::Draw()
 	// Singular values
 	ImGui::Begin( "Singular valus" );
 	{
+		auto [U, s, Vt] = SVD( mMigrationMat );
+		dfVec log;
+		log.setlength( s.length() );
+		std::vector<Float> xs;
+
+		for( int i = 0; i < s.length(); i++ )
+		{
+			log[i] = std::log( s[i] );
+			xs.push_back( i );
+		}
+
 		if( ImPlot::BeginPlot( "##Alpha" ) )
 		{
-			auto [U, s, Vt] = SVD( mMigrationMat );
-			//const auto& m = mUIData.mSimTestHist;
-			//auto Ut = MatTranpose( U );
-			//auto d = MatVecMul( Ut, m );
-			std::vector<Float> xs;
-			for( int i = 0; i < s.length(); i++ )
-			{
-				s[i] = std::log( s[i] );
-				xs.push_back( i );
-			}
 			ImPlot::PlotBars( "alpha", xs.data(), s.getcontent(), (int)s.length(), 0.4 );
+			ImPlot::EndPlot();
+		}
+
+		if( ImPlot::BeginPlot( "##Log" ) )
+		{
+			ImPlot::PlotBars( "Log", xs.data(), log.getcontent(), (int)s.length(), 0.4 );
 			ImPlot::EndPlot();
 		}
 	}

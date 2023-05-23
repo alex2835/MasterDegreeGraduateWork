@@ -15,6 +15,8 @@ inline dfVec CalculateHistogram( Bins& bins, std::span<sfVec> data, size_t dim_s
 
 	for( const auto& vec : data )
 	{
+		if( !bins.HitBinRange( vec ) )
+			continue;
 		auto md_idx = bins.GetBinByValue( ShiftDimTransform( vec, bins.Dims(), dim_shift ) ).mIdx;
 		auto idx = FromMultidimentionalIdx( md_idx, bins.mSize );
 		hist[idx]++;

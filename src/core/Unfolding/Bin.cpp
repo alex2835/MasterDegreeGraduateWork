@@ -62,7 +62,7 @@ Bins StaticBinning( const std::span<sfVec> sim,
 	bins.mBins.back().mEnd = max;
 
 	for( size_t i = 0; i < exp.size(); i++ )
-		bins.PutInBin( ShiftDimTransform( { sim[i], exp[i] }, dims, dims_shift ) );
+		bins.PutInBin( ShiftDimTransform( { exp[i], sim[i] }, dims, dims_shift ) );
 
 	return  bins;
 }
