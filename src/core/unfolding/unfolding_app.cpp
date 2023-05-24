@@ -110,7 +110,7 @@ void UnfoldingApp::TestWithoutUI()
 						   mUIData.mBinsNum );
 	mMigrationMat = CalculateMigrationMat( mBins );
 	auto m = CalculateHistogram( mBins, mTrainingSim, mUIData.mDimShift );
-	auto solution = SolveSystem( mMigrationMat, mBins, m, NeighborsMatType::Nonbinary, 0.1f, true );
+	auto solution = SolveSystem( mMigrationMat, mBins, m, NeighborsMatType::NonbinaryStatistic, 0.1f, true );
 }
 
 
@@ -228,13 +228,13 @@ void UnfoldingApp::Draw()
 
 		if( ImGui::SliderInt( "Bins", &mUIData.mBinsNum, MIN_BIN_SIZE, MAX_BIN_SIZE ) )
 			mUIData.mRebinning = true;
-		if( ImGui::Combo( "Binning type", (int*)&mUIData.mBinningType, "static\0dynamic\0dynamic median", 3 ) )
+		if( ImGui::Combo( "Binning type", (int*)&mUIData.mBinningType, "static\0dynamic\0dynamic median\0hybrid", 4 ) )
 			mUIData.mRebinning = true;
 
-		if( ImGui::Combo( "Neighbors mat type", (int*)&mUIData.mNeighborsMatType, "binary\0nonbinary", 2 ) )
+		if( ImGui::Combo( "Neighbors mat type", (int*)&mUIData.mNeighborsMatType, "binary\0nonbinary stat\0mass center", 3 ) )
 			mUIData.mRebinning = true;
 		
-		if( ImGui::SliderFloat( "Alpha", &mUIData.mAlpha, 0.0f, 0.1f ) )
+		if( ImGui::SliderFloat( "Alpha", &mUIData.mAlpha, 0.0f, 0.05f ) )
 			mUIData.mRebinning = true;
 
 		if( ImGui::SliderFloat( "AlphaLow", &mUIData.mAlphaLow, 0, 1000 ) )

@@ -38,6 +38,13 @@ inline dfVec CalculateProbabilities( const dfVec& hist )
 	return probabilities;
 }
 
+enum class NeighborsMatType
+{
+	Binary,
+	NonbinaryStatistic,
+	NonbinaryMassCenters
+};
+
 inline bool IsNaigbors( const Bin& first, const Bin& second )
 {
 	size_t sum = 0;
@@ -64,7 +71,7 @@ inline dfMat CalculateBinaryNeighborsMat( const Bins& bins )
 	return mat;
 }
 
-inline Float NeighborsProximity( const Bin& first, const Bin& second )
+inline Float NeighborsStatProximity( const Bin& first, const Bin& second )
 {
 	Float proximity = 0;
 	for( const auto& pair : first )
@@ -72,18 +79,47 @@ inline Float NeighborsProximity( const Bin& first, const Bin& second )
 	return proximity;
 }
 
-inline dfMat CalculateNotBinaryNeighborsMat( const Bins& bins )
+inline Float NeighborsMassCenterProximity( const Bin& first, const Bin& second )
+{
+	sfVec f_mean( first.Dims() );
+	sfVec s_mean( second.Dims() );
+	for( const auto& pair : first )
+		f_mean = f_mean + pair.first;
+	f_mean = f_mean / ( (int)first.Size() + 1 );
+	for( const auto& pair : second )
+		s_mean = s_mean + pair.first;
+	s_mean = s_mean / ( (int)second.Size() + 1 );
+	
+	Float proximity = 0;
+	for( size_t i = 0; i < f_mean.size(); i++ )
+		proximity += std::pow( f_mean[i] - s_mean[i], 2 );
+
+	proximity = std::sqrt( proximity ) + 0.001;
+	return 1.0 / proximity;
+}
+
+inline dfMat CalculateNotBinaryNeighborsMat( const Bins& bins, NeighborsMatType type )
 {
 	auto size = bins.OneDimSize();
 	auto mat = CreateSqrMat( size );
 	for( size_t i = 0; i < size; i++ )
 	{
-		Float sum = 0;
+		Float sum = 0; 
 		for( size_t j = 0; j < size; j++ )
 		{
-			if( !IsNaigbors( bins[i], bins[j] ) )
+			if( i == j )
 				continue;
-			Float value = NeighborsProximity( bins[i], bins[j] );
+
+			Float value = 0;
+			switch( type )
+			{
+			case NeighborsMatType::NonbinaryStatistic:
+				value = NeighborsStatProximity( bins[i], bins[j] );
+				break;
+			case NeighborsMatType::NonbinaryMassCenters:
+				value = NeighborsMassCenterProximity( bins[i], bins[j] );
+				break;
+			}
 			mat[i][j] = -value;
 			sum += value;
 		}
@@ -94,12 +130,6 @@ inline dfMat CalculateNotBinaryNeighborsMat( const Bins& bins )
 	return mat;
 }
 
-enum class NeighborsMatType
-{
-	Binary,
-	Nonbinary,
-};
-
 // C or K mat
 inline dfMat CalculateNeighborsMat( const Bins& bins, NeighborsMatType type )
 {
@@ -107,8 +137,9 @@ inline dfMat CalculateNeighborsMat( const Bins& bins, NeighborsMatType type )
 	{
 	case NeighborsMatType::Binary:
 		return CalculateBinaryNeighborsMat( bins );
-	case NeighborsMatType::Nonbinary:
-		return CalculateNotBinaryNeighborsMat( bins );
+	case NeighborsMatType::NonbinaryStatistic:
+	case NeighborsMatType::NonbinaryMassCenters:
+		return CalculateNotBinaryNeighborsMat( bins, type );
 	}
 	throw std::runtime_error( "Invaid Meighbors type" );
 }

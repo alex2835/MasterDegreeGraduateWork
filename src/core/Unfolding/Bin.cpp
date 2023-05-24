@@ -184,7 +184,6 @@ Bins CalculateBins( const std::span<sfVec> sim,
 	{
 	case BinningType::Static:
 		return StaticBinning( sim, exp, dims, dims_shift, bins_count );
-		break;
 	case BinningType::Dynamic:
 	{
 		auto bins = StaticBinning( sim, exp, dims, dims_shift, 1 );
@@ -192,9 +191,19 @@ Bins CalculateBins( const std::span<sfVec> sim,
 		return bins;
 	}
 	case BinningType::DynamicMedian:
+	{
 		auto bins = StaticBinning( sim, exp, dims, dims_shift, 1 );
 		DynamicBinning( bins, bins_count - 1, FindCenterBinMedian );
 		return bins;
+	}
+	case BinningType::Hybrid:
+	{
+		auto static_bins  = std::max( 2, bins_count / 3 );
+		auto dynamic_bins = bins_count - static_bins;
+		auto bins = StaticBinning( sim, exp, dims, dims_shift, static_bins );
+		DynamicBinning( bins, dynamic_bins, FindCenterBinDefault );
+		return bins;
+	}
 	}
 	throw std::runtime_error( "Invalid binning type" );
 }

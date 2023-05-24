@@ -14,7 +14,8 @@ enum class BinningType
 {
 	Static,
 	Dynamic,
-	DynamicMedian
+	DynamicMedian,
+	Hybrid
 };
 
 struct Bin
@@ -32,6 +33,11 @@ struct Bin
 		//	std::cout << "begin " << mBegin << " end " << mEnd << " value " << value  << "\n";
 		return mBegin.AllEqualOrLessThen( value ) &&
 			   mEnd.AllEqualOrGreaterThen( value );
+	}
+
+	size_t Dims() const
+	{
+		return mIdx.size();
 	}
 	
 	size_t Size() const
@@ -126,12 +132,18 @@ struct Bins
 
 	const Bin& GetBinByValue( sfVec value ) const
 	{
-		return mBins[GetBinIdxByValue( value )];
+		auto idx = GetBinIdxByValue( value );
+		if( idx == -1 )
+			throw std::runtime_error( std::format( "GetBinByvalue: Out of bins bound {}", value ) );
+		return mBins[idx];
 	}
 
 	Bin& GetBinByValue( sfVec value )
 	{
-		return mBins[GetBinIdxByValue( value )];
+		auto idx = GetBinIdxByValue( value );
+		if( idx == -1 )
+			throw std::runtime_error( std::format( "GetBinByvalue: Out of bins bound {}", value ) );
+		return mBins[idx];
 	}
 
 	int GetBinIdxByValue( sfVec value ) const
@@ -155,11 +167,7 @@ struct Bins
 				if( value[dim] <= mCache[dim][last_id].second )
 					idx.push_back( last_id );
 				else
-				{
-					//std::cout << std::format( "GetBinByValue miss: {}", value ) << std::endl;
-					//throw std::runtime_error( std::format( "GetBinByvalue: Out of bins bound {}", value ) );
 					return -1;
-				}
 			}
 			else
 			{
