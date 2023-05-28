@@ -228,7 +228,8 @@ void UnfoldingApp::Draw()
 
 		if( ImGui::SliderInt( "Bins", &mUIData.mBinsNum, MIN_BIN_SIZE, MAX_BIN_SIZE ) )
 			mUIData.mRebinning = true;
-		if( ImGui::Combo( "Binning type", (int*)&mUIData.mBinningType, "static\0dynamic\0dynamic median\0hybrid", 4 ) )
+
+		if( ImGui::Combo( "Binning type", (int*)&mUIData.mBinningType, "static\0dynamic\0dynamic median\0hybrid\0maxi", 5 ) )
 			mUIData.mRebinning = true;
 
 		if( ImGui::Combo( "Neighbors mat type", (int*)&mUIData.mNeighborsMatType, "binary\0nonbinary stat\0mass center", 3 ) )
@@ -244,9 +245,6 @@ void UnfoldingApp::Draw()
 			mUIData.mRebinning = true;
 
 		ImGui::Checkbox( "Migration mat values", &mUIData.mMibrationMatValues );
-
-		if( ImGui::Button( "rebuild", ImVec2( 100, 40 ) ) )
-			mUIData.mRebinning = true;
 	}
 	ImGui::End();
 

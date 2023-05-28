@@ -170,6 +170,17 @@ Float FindCenterBinMedian( const Bins& bins, int dim, int max_bin )
 }
 
 
+//Bins MaxiBinning( const std::span<sfVec> sim,
+//				  const std::span<sfVec> exp,
+//				  size_t dims,
+//				  size_t dims_shift,
+//				  size_t bins_count )
+//{
+//	std::vector<std::pair<Float, Float>> pairs;
+//	for( size_t i = 0; i < sim.size(); i++ )
+//		pairs.push_back( )
+//}
+
 Bins CalculateBins( const std::span<sfVec> sim,
 					const std::span<sfVec> exp,
 					size_t dims,
@@ -203,6 +214,13 @@ Bins CalculateBins( const std::span<sfVec> sim,
 		auto bins = StaticBinning( sim, exp, dims, dims_shift, static_bins );
 		DynamicBinning( bins, dynamic_bins, FindCenterBinDefault );
 		return bins;
+	}
+	case BinningType::Maxi:
+	{
+		//if( dims == 1 )
+		//	return MaxiBinning( sim, exp, dims, dims_shift, bins_count );
+		std::cout << "Maxi binning available only for one dim problem";
+		return StaticBinning( sim, exp, dims, dims_shift, bins_count );
 	}
 	}
 	throw std::runtime_error( "Invalid binning type" );

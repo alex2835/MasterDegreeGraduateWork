@@ -15,7 +15,8 @@ enum class BinningType
 	Static,
 	Dynamic,
 	DynamicMedian,
-	Hybrid
+	Hybrid,
+	Maxi
 };
 
 struct Bin
