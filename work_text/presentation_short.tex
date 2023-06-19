@@ -49,14 +49,15 @@
 \begin{block}{}
    На следующем этапе каждую запись в измеряемом бине (то есть каждое событие) можно напрямую проследить до ее происхождения. 
    Это дает нам хорошо определенную систему линейных отношений между смоделированным истинным и измеренным распределениями: 
-   $A\tau = m$. Матрица $A$ размера $n_{m} \times n_{\tau}$ строится следующим образом, 
-   $A_{ij} = P( \text{ истинное } \in \text{Bin}_{i} \mid \text{измеренное} \in \text{Bin}_{j} )$, 
+   $A\tau = m$.
 \end{block}
 \end{frame}
 
 \begin{frame}{Матрица миграций}
+   Матрица $A$ размера $n_{m} \times n_{\tau}$ строится следующим образом:
+   $A_{ij} = P( \text{ истинное } \in \text{Bin}_{i} \mid \text{измеренное} \in \text{Bin}_{j} )$
 \begin{figure}[!ht]
-   \includegraphics[width=\linewidth]{images/gaus_mig_black.png}
+   \includegraphics[scale=0.3]{images/gaus_mig_black.png}
 \end{figure}
 \end{frame}
 
@@ -140,28 +141,24 @@
        \end{bmatrix}
        \label{system_one_dim}
    \end{equation}
-
 После, следуя алгоритму, можно получить точное решения слау:
-
 \begin{enumerate}
     \item Выполняем сингулярное разложение матрицы A \\
     $USV^T \tau = m.$
     \item Делаем замену $z = V^T\tau$. Получаем $USz = m.$
     \item $U$ - ортогональная, это значит что обратная матрица ровна транспонированной. Домножая систему на $U^{-1}$ получаем $Sz=U^Tm$.
     \item Далее делаем замену $d=U^Tm$, и система принимает вид $Sz=d$.
-    \item Отсюда находим $z_{i} = d_{i} / s_{i}$.
+    \item Отсюда находим $z_{i} = \frac{d_{i}}{s_{i}} \cdot \frac{s^2_{i}}{s^2_{i} + \alpha}$.
     \item Решение системы находим находим следующим образом $\tau = Vz$.
 \end{enumerate}
-
 \end{frame}
 
 
 \begin{frame}{Решение задачи обратной свертки методом регулязации в многомерном случаи}
-   Из выше описанного следует что матрица $C$ является подмножеством матрицы $K$, и для нового слагаемого можно вводить более сложные
+   Матрица $C$ является подмножеством матрицы $K$, и для нового слагаемого можно вводить более сложные
    отношения соседства. Во первых, близкими могут быть бины у которых не только общая грань, а во вторых, сила связи для разных бинов
    может отличаться. Для силы связи введем параметр $\omega(\Delta_{i}, \Delta_{j}) \geq 0$ - который описывает вес соседних ячеек. 
    Теперь постоим матрицу, с не бинарным отношением:
-   
    \begin{equation}
     k_{ij} =
      \begin{cases}
@@ -169,7 +166,6 @@
        -w( \Delta_{i}, \Delta_{j} ), \text{ при } i \neq j
      \end{cases}
    \end{equation}
-
    \begin{equation}
       \Phi(\tau)=(R\tau-m)^T (R\tau-m) + \alpha(K\tau)^T(K\tau) \to min_{\tau}
       \label{min_n_dim}
@@ -252,7 +248,7 @@
    \end{figure}
 \end{frame}
 
-\begin{frame}{Итог}
+\begin{frame}{Приложение}
    \begin{figure}[h!]
       \centering
       \includegraphics[width=\linewidth]{images/app_example.png}
@@ -260,7 +256,7 @@
    \end{figure}
 \end{frame}
 
-\begin{frame}{Итог}
+\begin{frame}{Приложение}
    \begin{figure}[h!]
       \centering
       \includegraphics[scale=0.3]{images/binning_projections_example.png}
